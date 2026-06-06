@@ -1,0 +1,53 @@
+# ---- macOS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+*.egg
+
+# ---- Virtual envs / uv ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Caches / tooling ----
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+
+# ---- Datasets (download fresh on the GPU box; never commit) ----
+# Matches data/ at any level: assignment1-basics/data/, cs336_basics/data/, etc.
+data/
+*.txt.gz
+*.gz
+
+# ---- Tokenized arrays & model artifacts ----
+*.npy
+*.npz
+*.bin
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+
+# ---- Experiment tracking ----
+wandb/
+
+# ---- Secrets / env ----
+.env
+
+# ---- IDE ----
+.vscode/
+.idea/
