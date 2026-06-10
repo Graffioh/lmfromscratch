@@ -77,14 +77,21 @@ def merge(
     new_vocab_words: list[bytes] = []
     merges: list[tuple[bytes, bytes]] = []
 
+    # optimization 1 - use a reverse index with <pair>: add((<word>, <count>)) after picking the winning pair
+    #   so that we don't traverse each freq_table key to find in which word, the pair appear
+    words = list(freq_table.items())
+    index_pair_to_word_slots: defaultdict[tuple[bytes, ...], set[int]] = defaultdict(set[int])
+
     # merge max_merges times
     for i in range(max_merges):
         # gather all the pairs to merge with respective cumulative count
         pairs_to_merge: defaultdict[tuple[bytes, ...], int] = defaultdict(int)
-        for bytes_key, bytes_count in freq_table.items():
+        for pos, (bytes_key, bytes_count) in enumerate(words):
             pairs: list[tuple[bytes, bytes]] = []
             for i in range(len(bytes_key) - 1):
-                pairs.append((bytes_key[i], bytes_key[i + 1]))
+                bytes_to_merge = (bytes_key[i], bytes_key[i + 1])
+                pairs.append(bytes_to_merge)
+                index_pair_to_word_slots[bytes_to_merge].add(pos)
 
             for p in pairs:
                 pairs_to_merge[p] += bytes_count
@@ -96,33 +103,27 @@ def merge(
 
         # take the winning pair (break ties with lexographically greater) and merge it
         max_pair = max(pairs_to_merge.items(), key=lambda pair: (pair[1], pair[0]))
-        winning_bytes = max_pair[0]
-        merged_winning_bytes = winning_bytes[0] + winning_bytes[1]
+        winning_pair = max_pair[0]
+        merged_winning_bytes = winning_pair[0] + winning_pair[1]
 
-        # find the winning bytes in the freq_table keys and whenever found, merge them
-        new_tmp_table: defaultdict[tuple[bytes, ...], int] = defaultdict(int)
-        for bytes_key, bytes_count in freq_table.items():
-            new_key: list[bytes] = []
+        for slot in index_pair_to_word_slots[winning_pair]:
+            cur_word, cur_count = words[slot]
+            new_word: list[bytes] = []
             i = 0
-
-            while i < len(bytes_key):
-                if i + 1 < len(bytes_key) and winning_bytes[0] == bytes_key[i] and winning_bytes[1] == bytes_key[i + 1]:
-                    new_key.append(merged_winning_bytes)
+            while i < len(cur_word):
+                if i + 1 < len(cur_word) and cur_word[i] == winning_pair[0] and cur_word[i + 1] == winning_pair[1]:
+                    new_word.append(cur_word[i] + cur_word[i + 1])
                     i += 2
                 else:
-                    new_key.append(bytes_key[i])
+                    new_word.append(cur_word[i])
                     i += 1
 
-            # update new_table with new {bytes key: freq count}
-            new_tmp_table[tuple(new_key)] += bytes_count
-
-        # freq_table is now the new table with new merged pairs!
-        freq_table = new_tmp_table
+            words[slot] = (tuple(new_word), cur_count)
 
         # store the new entries to insert in vocab
         new_vocab_words.append(merged_winning_bytes)
 
-        merges.append((winning_bytes[0], winning_bytes[1]))
+        merges.append((winning_pair[0], winning_pair[1]))
     return (merges, new_vocab_words)
 
 
