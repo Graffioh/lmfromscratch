@@ -1,26 +1,19 @@
-import re
 from collections import Counter, defaultdict
 
-corpus_txt = """low low low low 
-lower lower widest widest widest 
-newest newest newest newest newest newest cafè"""
+import regex
 
-# build base vocab of 256 bytes + EOT token
-vocab: defaultdict[int, bytes] = defaultdict(bytes)
-vocab[0] = "<|endoftext|>".encode("utf-8")
-for b in range(256):
-    vocab[b + 1] = bytes([b])
+VOCAB_BASE_SIZE = 256
 
-freq_table: Counter[tuple[bytes, ...]] = Counter()
+GPT2_PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+gpt_regex_pattern = regex.compile(GPT2_PAT)
 
 
-# simple, via whitespaces not gpt 2 regex
-def pretokenize(text: str):
-    txt_split = re.split(r"\s+", text)
+def pretokenize(freq_table: Counter[tuple[bytes, ...]], text: str):
+    txt_split = regex.finditer(gpt_regex_pattern, text)
 
-    for s in txt_split:
+    for s_objects in txt_split:
         # convert the string into bytes
-        bytes_str = s.encode("utf-8")
+        bytes_str = s_objects.group().encode("utf-8")
         bytes_list: list[bytes] = [bytes([b]) for b in bytes_str]
 
         # for each bytes, we need to increment the counter
@@ -35,7 +28,7 @@ def merge(
     merges: list[tuple[bytes, bytes]] = []
 
     # merge max_merges times
-    for _ in range(max_merges):
+    for i in range(max_merges):
         # gather all the pairs to merge with respective cumulative count
         pairs_to_merge: defaultdict[tuple[bytes, ...], int] = defaultdict(int)
         for bytes_key, bytes_count in freq_table.items():
@@ -76,28 +69,59 @@ def merge(
         # freq_table is now the new table with new merged pairs!
         freq_table = new_tmp_table
 
-        # add the new entry in vocab
+        # store the new entries to insert in vocab
         new_vocab_words.append(merged_winning_bytes)
 
         merges.append((winning_bytes[0], winning_bytes[1]))
-    return merges, new_vocab_words
+    return (merges, new_vocab_words)
 
 
-# split docs by EOT delimiter before pretokenize (so we avoid pretokenization across docs)
-txt_docs = re.split("<\\|endoftext\\|>", corpus_txt)
-for txt in txt_docs:
-    pretokenize(txt)
+def train_bpe(
+    input_path: str, max_vocab_size: int, special_tokens: list[str]
+) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+    freq_table: Counter[tuple[bytes, ...]] = Counter()
 
-merged_tokens, new_vocab_words = merge(freq_table, 6)
+    # build base vocab
+    vocab: defaultdict[int, bytes] = defaultdict(bytes)
+    for i, st in enumerate(special_tokens):
+        vocab[i] = st.encode("utf-8")
 
-cur_vocab_len = len(vocab)
-for nw in new_vocab_words:
-    vocab[cur_vocab_len] = nw
-    cur_vocab_len += 1
+    cur_vocab_len = len(vocab)
+    for i in range(VOCAB_BASE_SIZE):
+        vocab[i + cur_vocab_len] = bytes([i])
 
-print("+++++++++++++++++++++++++++")
-print("VOCAB: ", vocab)
-print("+++++++++++++++++++++++++++")
-print("VOCAB LEN CHECKS: ", min(vocab), max(vocab), len(vocab))
-print("+++++++++++++++++++++++++++")
-print("MERGED TOKENS: ", merged_tokens)
+    # read input text
+    corpus_text = ""
+    with open(input_path, encoding="utf-8") as f:
+        corpus_text = f.read()
+
+    # split docs by special tokens (e.g. EOT delimiter) and pretokenize
+    delimited_special_tokens = "|".join(regex.escape(st) for st in special_tokens)
+    txt_docs = regex.split(delimited_special_tokens, corpus_text)
+    for txt in txt_docs:
+        pretokenize(freq_table, txt)
+
+    max_merges_count = max_vocab_size - VOCAB_BASE_SIZE - len(special_tokens)
+    merges, new_vocab_words = merge(freq_table, max_merges_count)
+
+    cur_vocab_len = len(vocab)
+    for nw in new_vocab_words:
+        vocab[cur_vocab_len] = nw
+        cur_vocab_len += 1
+
+    print("******************************")
+    print(
+        f"len(vocab)={len(vocab)} max_merges={max_merges_count} n_merges={len(merges)} n_special_tokens={len(special_tokens)}"
+    )
+    print("******************************")
+
+    return (vocab, merges)
+
+
+vocab, merges = train_bpe("./cs336_basics/corpus_example.txt", 271, ["<|endoftext|>"])
+
+print("---------------------")
+print(f"VOCAB: {vocab}")
+print("---------------------")
+print(f"MERGES: {merges}")
+print("---------------------")
