@@ -1,5 +1,7 @@
 import os
 from collections import Counter, defaultdict
+from io import BufferedReader
+from multiprocessing import Pool
 from typing import BinaryIO
 
 import regex
@@ -127,6 +129,22 @@ def merge(
     return (merges, new_vocab_words)
 
 
+def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: list[str]) -> Counter[tuple[bytes, ...]]:
+    tmp_freq_table: Counter[tuple[bytes, ...]] = Counter()
+
+    with open(input_path, "rb") as f:
+        _ = f.seek(start)
+        corpus_text_chunk = f.read(end - start).decode("utf-8", errors="ignore")
+
+        # split docs by special tokens (e.g. EOT delimiter) and pretokenize
+        delimited_special_tokens = "|".join(regex.escape(st) for st in special_tokens)
+        txt_docs = regex.split(delimited_special_tokens, corpus_text_chunk)
+        for txt in txt_docs:
+            pretokenize(tmp_freq_table, txt)
+
+    return tmp_freq_table
+
+
 def train_bpe(
     input_path: str, max_vocab_size: int, special_tokens: list[str]
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
@@ -142,20 +160,21 @@ def train_bpe(
         vocab[i + cur_vocab_len] = bytes([i])
 
     with open(input_path, "rb") as f:
-        num_processes = 4
+        num_processes = 2
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
 
-        # The following is a serial implementation, but you can parallelize this
-        # by sending each start/end pair to a set of processes.
+        # optimization 2 - sending chunks to different processes
+        pretokenize_args: list[tuple[str, int, int, list[str]]] = []
         for start, end in zip(boundaries[:-1], boundaries[1:]):
-            _ = f.seek(start)
-            corpus_text_chunk = f.read(end - start).decode("utf-8", errors="ignore")
+            pretokenize_args.append((input_path, start, end, special_tokens))
 
-            # split docs by special tokens (e.g. EOT delimiter) and pretokenize
-            delimited_special_tokens = "|".join(regex.escape(st) for st in special_tokens)
-            txt_docs = regex.split(delimited_special_tokens, corpus_text_chunk)
-            for txt in txt_docs:
-                pretokenize(freq_table, txt)
+        with Pool(
+            num_processes,
+        ) as pool:
+            freq_table_parallel = pool.starmap(pretokenize_worker, pretokenize_args)
+
+    for freq_table_chunk in freq_table_parallel:
+        freq_table.update(freq_table_chunk)
 
     max_merges_count = max_vocab_size - VOCAB_BASE_SIZE - len(special_tokens)
     merges, new_vocab_words = merge(freq_table, max_merges_count)
@@ -172,12 +191,3 @@ def train_bpe(
     print("******************************")
 
     return (vocab, merges)
-
-
-vocab, merges = train_bpe("./cs336_basics/corpus_example.txt", 271, ["<|endoftext|>"])
-
-print("---------------------")
-print(f"VOCAB: {vocab}")
-print("---------------------")
-print(f"MERGES: {merges}")
-print("---------------------")
