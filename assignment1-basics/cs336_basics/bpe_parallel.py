@@ -1,6 +1,5 @@
 import os
 from collections import Counter, defaultdict
-from io import BufferedReader
 from multiprocessing import Pool
 from typing import BinaryIO
 
@@ -146,7 +145,7 @@ def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: li
 
 
 def train_bpe(
-    input_path: str, max_vocab_size: int, special_tokens: list[str]
+    input_path: str | os.PathLike[str], max_vocab_size: int, special_tokens: list[str]
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     freq_table: Counter[tuple[bytes, ...]] = Counter()
 
@@ -166,7 +165,7 @@ def train_bpe(
         # optimization 2 - sending chunks to different processes
         pretokenize_args: list[tuple[str, int, int, list[str]]] = []
         for start, end in zip(boundaries[:-1], boundaries[1:]):
-            pretokenize_args.append((input_path, start, end, special_tokens))
+            pretokenize_args.append((str(input_path), start, end, special_tokens))
 
         with Pool(
             num_processes,
@@ -183,11 +182,5 @@ def train_bpe(
     for nw in new_vocab_words:
         vocab[cur_vocab_len] = nw
         cur_vocab_len += 1
-
-    print("******************************")
-    print(
-        f"len(vocab)={len(vocab)} max_merges={max_merges_count} n_merges={len(merges)} n_special_tokens={len(special_tokens)}"
-    )
-    print("******************************")
 
     return (vocab, merges)
