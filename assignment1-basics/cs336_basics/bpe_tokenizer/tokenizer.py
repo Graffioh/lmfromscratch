@@ -52,10 +52,14 @@ class Tokenizer:
                         i += 1
                 pretokens[pos] = tuple(new_pretoken_tuple)
 
-        # build token ids from the pretokens tuples
+        # build token ids from the pretokens tuples and indexing in inverse vocab
+        inv_vocab: defaultdict[bytes, int] = defaultdict()
+        for n, b in self.vocab.items():
+            inv_vocab[b] = n
+
         token_ids: list[int] = []
         for pretokens_tuple in pretokens:
             for b_t in pretokens_tuple:
-                token_ids.append(ord(b_t))
+                token_ids.append(inv_vocab[b_t])
 
         return token_ids
