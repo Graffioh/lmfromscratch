@@ -3,7 +3,7 @@ import os
 import pickle
 from pathlib import Path
 
-from cs336_basics.bpe_parallel import train_bpe
+from .bpe_parallel import train_bpe
 
 parent_path = Path(__file__).resolve().parent
 
