@@ -29,6 +29,6 @@ if __name__ == "__main__":
     _ = parser.add_argument("split", choices=["train", "valid"])
     args = parser.parse_args()
 
-    dataset_file = "TinyStoriesV2-GPT4-train.txt" if args == "train" else "TinyStoriesV2-GPT4-valid.txt"
+    dataset_file = "TinyStoriesV2-GPT4-train.txt" if args.split == "train" else "TinyStoriesV2-GPT4-valid.txt"
     dataset_path = parent_path / "data" / dataset_file
     train_dataset(dataset_path, vocab_size=10000, special_tokens=["<|endoftext|>"])
