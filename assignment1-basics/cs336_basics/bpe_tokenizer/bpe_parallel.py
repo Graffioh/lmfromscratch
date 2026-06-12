@@ -4,6 +4,7 @@ from multiprocessing import Pool
 from typing import BinaryIO
 
 import regex
+from tqdm import tqdm
 
 VOCAB_BASE_SIZE = 256
 
@@ -84,7 +85,7 @@ def merge(
     index_pair_to_word_slots: defaultdict[tuple[bytes, ...], set[int]] = defaultdict(set[int])
 
     # merge max_merges times
-    for i in range(max_merges):
+    for i in tqdm(range(max_merges), desc="bpe merges"):
         # gather all the pairs to merge with respective cumulative count
         pairs_to_merge: defaultdict[tuple[bytes, ...], int] = defaultdict(int)
         for pos, (bytes_key, bytes_count) in enumerate(words):
@@ -128,6 +129,11 @@ def merge(
     return (merges, new_vocab_words)
 
 
+def pretokenize_worker_star(args: tuple[str, int, int, list[str]]) -> Counter[tuple[bytes, ...]]:
+    # unpacking wrapper so imap_unordered (single-arg) can call the worker
+    return pretokenize_worker(*args)
+
+
 def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: list[str]) -> Counter[tuple[bytes, ...]]:
     tmp_freq_table: Counter[tuple[bytes, ...]] = Counter()
 
@@ -146,7 +152,7 @@ def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: li
 
 
 def train_bpe(
-    input_path: str | os.PathLike[str], max_vocab_size: int, special_tokens: list[str]
+    input_path: str | os.PathLike[str], max_vocab_size: int, special_tokens: list[str], n_proc: int = 1
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     freq_table: Counter[tuple[bytes, ...]] = Counter()
 
@@ -160,7 +166,7 @@ def train_bpe(
         vocab[i + cur_vocab_len] = bytes([i])
 
     with open(input_path, "rb") as f:
-        num_processes = 4
+        num_processes = n_proc
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
 
         # optimization 2 - sending chunks to different processes
@@ -171,7 +177,14 @@ def train_bpe(
         with Pool(
             num_processes,
         ) as pool:
-            freq_table_parallel = pool.starmap(pretokenize_worker, pretokenize_args)
+            freq_table_parallel = list(
+                tqdm(
+                    # results arrive as each chunk completes, with yield, so we can use tqdm
+                    pool.imap_unordered(pretokenize_worker_star, pretokenize_args),
+                    total=len(pretokenize_args),
+                    desc="pretokenize chunks",
+                )
+            )
 
     for freq_table_chunk in freq_table_parallel:
         freq_table.update(freq_table_chunk)
