@@ -1,5 +1,7 @@
 import pickle
-import pprint
+from collections import defaultdict
+
+from .bpe_parallel import pretokenize
 
 
 class Tokenizer:
@@ -24,6 +26,36 @@ class Tokenizer:
 
         return cls(vocab, merges, special_tokens)
 
+    def encode(self, text: str) -> list[int]:
+        # reverse-index optimization taken from merge
+        index_tuple_to_pretokens: defaultdict[tuple[bytes, ...], set[int]] = defaultdict(set[int])
 
-tknzr = Tokenizer.from_files("./output_train_vocab.pkl", "./output_train_merges.pkl", ["<|endoftext|>"])
-pprint.pprint(vars(tknzr))
+        # gather pretokens
+        pretokens: list[tuple[bytes, ...]] = []
+        for pos, byte_tuple in enumerate(pretokenize(text)):
+            pretokens.append(byte_tuple)
+            index_tuple_to_pretokens[byte_tuple].add(pos)
+
+        # merge pretokens in the order of training merges
+        for b1, b2 in self.merges:
+            for pos in index_tuple_to_pretokens[(b1, b2)]:
+                i = 0
+                pretokens_tuple = pretokens[pos]
+                pretokens_len = len(pretokens_tuple)
+                new_pretoken_tuple: list[bytes] = []
+                while i < pretokens_len:
+                    if i + 1 < pretokens_len and pretokens_tuple[i] == b1 and pretokens_tuple[i + 1] == b2:
+                        new_pretoken_tuple.append(b1 + b2)
+                        i += 2
+                    else:
+                        new_pretoken_tuple.append(pretokens_tuple[i])
+                        i += 1
+                pretokens[pos] = tuple(new_pretoken_tuple)
+
+        # build token ids from the pretokens tuples
+        token_ids: list[int] = []
+        for pretokens_tuple in pretokens:
+            for b_t in pretokens_tuple:
+                token_ids.append(ord(b_t))
+
+        return token_ids

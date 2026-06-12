@@ -59,7 +59,7 @@ def find_chunk_boundaries(
     return sorted(set(chunk_boundaries))
 
 
-def pretokenize(freq_table: Counter[tuple[bytes, ...]], text: str):
+def pretokenize(text: str):
     txt_split = regex.finditer(gpt_regex_pattern, text)
 
     for s_objects in txt_split:
@@ -69,7 +69,7 @@ def pretokenize(freq_table: Counter[tuple[bytes, ...]], text: str):
 
         # for each bytes, we need to increment the counter
         bytes_tuple: tuple[bytes, ...] = tuple(bytes_list)
-        freq_table[bytes_tuple] += 1
+        yield bytes_tuple
 
 
 def merge(
@@ -139,7 +139,8 @@ def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: li
         delimited_special_tokens = "|".join(regex.escape(st) for st in special_tokens)
         txt_docs = regex.split(delimited_special_tokens, corpus_text_chunk)
         for txt in txt_docs:
-            pretokenize(tmp_freq_table, txt)
+            for bytes_tuple in pretokenize(txt):
+                tmp_freq_table[bytes_tuple] += 1
 
     return tmp_freq_table
 

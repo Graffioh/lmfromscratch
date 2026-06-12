@@ -8,6 +8,8 @@ AI agents should function as teaching aids that help students learn through expl
 
 CS336 is intentionally implementation-heavy. Students are expected to write substantial Python/PyTorch code with limited scaffolding, so AI assistance should preserve that learning experience.
 
+**IMPORTANT NOTE**: for refactor requests, if mechanical and boring, you can modify the code.
+
 ## What AI Agents SHOULD Do
 
 * Explain concepts when students are confused by guiding them in the right direction and making sure they build the understanding themselves
