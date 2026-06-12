@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# usage: ./profile.sh {cprofile|viztracer} --file SCRIPT [--output OUTPUT]
+# usage: ./run_profiler.sh {cprofile|viztracer} --file SCRIPT [--output OUTPUT]
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 PROFILER="${1:-}"
 OUTPUT="profile"
@@ -32,13 +34,12 @@ fi
 
 case "$PROFILER" in
 cprofile)
-  python -m cProfile -o "${OUTPUT}.prof" "$FILE"
-  echo "wrote ${OUTPUT}.prof  ->  python -m pstats ${OUTPUT}.prof  (sort cumulative; stats 20)"
+  python -m cProfile -s tottime -m pytest "$FILE" >"${SCRIPT_DIR}/${OUTPUT}.txt"
+  echo "wrote ${SCRIPT_DIR}/${OUTPUT}.txt"
   ;;
 
 viztracer)
-  viztracer --output_file "${OUTPUT}.json" -- python "$FILE"
-  echo "wrote ${OUTPUT}.json  ->  vizviewer ${OUTPUT}.json"
+  viztracer --output_file "${SCRIPT_DIR}/${OUTPUT}.json" -m pytest "$FILE"
   ;;
 
 *)
