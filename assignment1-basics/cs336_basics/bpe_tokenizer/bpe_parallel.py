@@ -160,7 +160,7 @@ def train_bpe(
         vocab[i + cur_vocab_len] = bytes([i])
 
     with open(input_path, "rb") as f:
-        num_processes = 2
+        num_processes = 4
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
 
         # optimization 2 - sending chunks to different processes

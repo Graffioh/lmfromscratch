@@ -4,6 +4,7 @@ set -euo pipefail
 # usage: ./run_profiler.sh {cprofile|viztracer} --file SCRIPT [--output OUTPUT] [--test] [-- SCRIPT_ARGS...]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROFILES_DIR="${SCRIPT_DIR}/cs336_basics/profiles"
 
 PROFILER="${1:-}"
 OUTPUT="profile"
@@ -44,18 +45,18 @@ fi
 case "$PROFILER" in
 cprofile)
   if [[ "$IS_TEST" -eq 1 ]]; then
-    python -m cProfile -s tottime -m pytest "$FILE" "$@" >"${SCRIPT_DIR}/${OUTPUT}.txt"
+    python -m cProfile -s tottime -m pytest "$FILE" "$@" >"${PROFILES_DIR}/${OUTPUT}.txt"
   else
-    python -m cProfile -s tottime "$FILE" "$@" >"${SCRIPT_DIR}/${OUTPUT}.txt"
+    python -m cProfile -s tottime "$FILE" "$@" >"${PROFILES_DIR}/${OUTPUT}.txt"
   fi
-  echo "wrote ${SCRIPT_DIR}/${OUTPUT}.txt"
+  echo "wrote ${PROFILES_DIR}/${OUTPUT}.txt"
   ;;
 
 viztracer)
   if [[ "$IS_TEST" -eq 1 ]]; then
-    viztracer --output_file "${SCRIPT_DIR}/${OUTPUT}.json" -m pytest "$FILE" "$@"
+    viztracer --output_file "${PROFILES_DIR}/${OUTPUT}.json" -m pytest "$FILE" "$@"
   else
-    viztracer --output_file "${SCRIPT_DIR}/${OUTPUT}.json" "$FILE" "$@"
+    viztracer --output_file "${PROFILES_DIR}/${OUTPUT}.json" "$FILE" "$@"
   fi
   ;;
 
