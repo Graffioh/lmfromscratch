@@ -78,7 +78,7 @@ def pretokenize_worker_star(args: tuple[str, int, int, list[str]]) -> Counter[st
 
 
 def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: list[str]) -> Counter[str]:
-    tmp_freq_table: Counter[str] = Counter()
+    tmp_pretoken_freq_table: Counter[str] = Counter()
 
     with open(input_path, "rb") as f:
         _ = f.seek(start)
@@ -90,9 +90,9 @@ def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: li
         for txt in txt_docs:
             words_with_count = pretokenize(txt)
             for word, cnt in words_with_count.items():
-                tmp_freq_table[word] += cnt
+                tmp_pretoken_freq_table[word] += cnt
 
-    return tmp_freq_table
+    return tmp_pretoken_freq_table
 
 
 def merge(
@@ -104,38 +104,33 @@ def merge(
     # optimization 1 - use a reverse index with <pair>: add((<word>, <count>)) after picking the winning pair
     #   so that we don't traverse each freq_table key to find in which word, the pair appear
     words = list(freq_table.items())
-    index_pair_to_word_slots: defaultdict[tuple[bytes, ...], set[int]] = defaultdict(set[int])
 
     # merge max_merges times
     for i in tqdm(range(max_merges), desc="bpe merges"):
+        index_pair_to_word_slots: defaultdict[tuple[bytes, bytes], set[int]] = defaultdict(set[int])
+        index_pair_to_count: Counter[tuple[bytes, bytes]] = Counter()
         # gather all the pairs to merge with respective cumulative count
-        pairs_to_merge: defaultdict[tuple[bytes, ...], int] = defaultdict(int)
-        for pos, (bytes_key, bytes_count) in enumerate(words):
-            pairs: list[tuple[bytes, bytes]] = []
-            for i in range(len(bytes_key) - 1):
-                bytes_to_merge = (bytes_key[i], bytes_key[i + 1])
-                pairs.append(bytes_to_merge)
-                index_pair_to_word_slots[bytes_to_merge].add(pos)
-
-            for p in pairs:
-                pairs_to_merge[p] += bytes_count
+        for pos, (word, count) in enumerate(words):
+            for w_pos in range(len(word) - 1):
+                byte_pair = (word[w_pos], word[w_pos + 1])
+                index_pair_to_word_slots[byte_pair].add(pos)
+                index_pair_to_count[byte_pair] += count
 
         # we must check if there is any pair still mergeable
-        # (if pairs_table == 0, then it means we don't have pairs anymore, only single tokens hence nothing to merge)
-        if len(pairs_to_merge) == 0:
+        # (if == 0, then it means we don't have pairs anymore, only single tokens hence nothing to merge)
+        if len(index_pair_to_word_slots) == 0:
             break
 
-        # take the winning pair (break ties with lexographically greater) and merge it
-        max_pair = max(pairs_to_merge.items(), key=lambda pair: (pair[1], pair[0]))
-        winning_pair = max_pair[0]
-        merged_winning_bytes = winning_pair[0] + winning_pair[1]
+        # take the winning pair, first by count then by lexographically greater bytes and merge it
+        max_pair_and_count = max(index_pair_to_count.items(), key=lambda pair: (pair[1], pair[0]))
+        max_pair = max_pair_and_count[0]
 
-        for slot in index_pair_to_word_slots[winning_pair]:
+        for slot in index_pair_to_word_slots[max_pair]:
             cur_word, cur_count = words[slot]
             new_word: list[bytes] = []
             i = 0
             while i < len(cur_word):
-                if i + 1 < len(cur_word) and cur_word[i] == winning_pair[0] and cur_word[i + 1] == winning_pair[1]:
+                if i + 1 < len(cur_word) and cur_word[i] == max_pair[0] and cur_word[i + 1] == max_pair[1]:
                     new_word.append(cur_word[i] + cur_word[i + 1])
                     i += 2
                 else:
@@ -145,9 +140,11 @@ def merge(
             words[slot] = (tuple(new_word), cur_count)
 
         # store the new entries to insert in vocab
-        new_vocab_words.append(merged_winning_bytes)
+        new_vocab_words.append(max_pair[0] + max_pair[1])
 
-        merges.append((winning_pair[0], winning_pair[1]))
+        byte1: bytes = max_pair[0]
+        byte2: bytes = max_pair[1]
+        merges.append((byte1, byte2))
     return (merges, new_vocab_words)
 
 
@@ -177,7 +174,7 @@ def train_bpe(
         with Pool(
             num_processes,
         ) as pool:
-            freq_table_parallel = list(
+            pretoken_freq_table_from_parallel = list(
                 tqdm(
                     # results arrive as each chunk completes, with yield, so we can use tqdm
                     pool.imap_unordered(pretokenize_worker_star, pretokenize_args),
@@ -186,16 +183,23 @@ def train_bpe(
                 )
             )
 
-        #  for freq_table_chunk in freq_table_parallel:
-        #      freq_table.update(freq_table_chunk)
+        for pretoken_freq_table_chunk in pretoken_freq_table_from_parallel:
+            freq_table_chunk: Counter[tuple[bytes, ...]] = Counter()
+            for pretoken, count in pretoken_freq_table_chunk.items():
+                bytes_from_pretoken = pretoken.encode("utf-8")
+                bytes_split: list[bytes] = []
+                for b in bytes_from_pretoken:
+                    bytes_split.append(bytes([b]))
 
-        #  max_merges_count = max_vocab_size - VOCAB_BASE_SIZE - len(special_tokens)
-        #  merges, new_vocab_words = merge(freq_table, max_merges_count)
+                freq_table_chunk[tuple(bytes_split)] = count
+            freq_table.update(freq_table_chunk)
 
-        #  cur_vocab_len = len(vocab)
-        #  for nw in new_vocab_words:
-        #      vocab[cur_vocab_len] = nw
-        #      cur_vocab_len += 1
+        max_merges_count = max_vocab_size - VOCAB_BASE_SIZE - len(special_tokens)
+        merges, new_vocab_words = merge(freq_table, max_merges_count)
 
-    merges = []
+        cur_vocab_len = len(vocab)
+        for nw in new_vocab_words:
+            vocab[cur_vocab_len] = nw
+            cur_vocab_len += 1
+
     return (vocab, merges)
