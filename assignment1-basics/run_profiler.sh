@@ -2,6 +2,21 @@
 set -euo pipefail
 
 # usage: ./run_profiler.sh {cprofile|viztracer} --file SCRIPT [--output OUTPUT] [--test] [-- SCRIPT_ARGS...]
+#
+# examples:
+#   # cprofile, test file (--file is a pytest node id; extra pytest flags after --)
+#   ./run_profiler.sh cprofile --file "tests/test_train_bpe.py::test_train_bpe" --output bpe_test_cprofile --test -- -s
+#
+#   # cprofile, non-test script (script args after --)
+#   ./run_profiler.sh cprofile --file train_bpe_on_dataset.py --output bpe_train_cprofile -- train 8
+#
+#   # viztracer, test file
+#   ./run_profiler.sh viztracer --file "tests/test_train_bpe.py::test_train_bpe" --output bpe_test_viztrace --test
+#
+#   # viztracer, non-test script
+#   ./run_profiler.sh viztracer --file train_bpe_on_dataset.py --output bpe_train_viztrace -- train 8
+#
+#   # then open the viztracer result:  vizviewer cs336_basics/profiles/bpe_train_viztrace.json
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROFILES_DIR="${SCRIPT_DIR}/cs336_basics/profiles"

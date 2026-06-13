@@ -61,16 +61,38 @@ def find_chunk_boundaries(
 
 
 def pretokenize(text: str):
-    txt_split = regex.finditer(gpt_regex_pattern, text)
+    txt_split = gpt_regex_pattern.finditer(text)
+    word_count: Counter[str] = Counter()
 
     for s_objects in txt_split:
-        # convert the string into bytes
-        bytes_str = s_objects.group().encode("utf-8")
-        bytes_list: list[bytes] = [bytes([b]) for b in bytes_str]
+        # count the words occurrences
+        word = s_objects.group()
+        word_count[word] += 1
 
-        # for each bytes, we need to increment the counter
-        bytes_tuple: tuple[bytes, ...] = tuple(bytes_list)
-        yield bytes_tuple
+    return word_count
+
+
+def pretokenize_worker_star(args: tuple[str, int, int, list[str]]) -> Counter[str]:
+    # unpacking wrapper so imap_unordered (single-arg) can call the worker
+    return pretokenize_worker(*args)
+
+
+def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: list[str]) -> Counter[str]:
+    tmp_freq_table: Counter[str] = Counter()
+
+    with open(input_path, "rb") as f:
+        _ = f.seek(start)
+        corpus_text_chunk = f.read(end - start).decode("utf-8", errors="ignore")
+
+        # split docs by special tokens (e.g. EOT delimiter) and pretokenize
+        delimited_special_tokens = "|".join(regex.escape(st) for st in special_tokens)
+        txt_docs = regex.split(delimited_special_tokens, corpus_text_chunk)
+        for txt in txt_docs:
+            words_with_count = pretokenize(txt)
+            for word, cnt in words_with_count.items():
+                tmp_freq_table[word] += cnt
+
+    return tmp_freq_table
 
 
 def merge(
@@ -129,28 +151,6 @@ def merge(
     return (merges, new_vocab_words)
 
 
-def pretokenize_worker_star(args: tuple[str, int, int, list[str]]) -> Counter[tuple[bytes, ...]]:
-    # unpacking wrapper so imap_unordered (single-arg) can call the worker
-    return pretokenize_worker(*args)
-
-
-def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: list[str]) -> Counter[tuple[bytes, ...]]:
-    tmp_freq_table: Counter[tuple[bytes, ...]] = Counter()
-
-    with open(input_path, "rb") as f:
-        _ = f.seek(start)
-        corpus_text_chunk = f.read(end - start).decode("utf-8", errors="ignore")
-
-        # split docs by special tokens (e.g. EOT delimiter) and pretokenize
-        delimited_special_tokens = "|".join(regex.escape(st) for st in special_tokens)
-        txt_docs = regex.split(delimited_special_tokens, corpus_text_chunk)
-        for txt in txt_docs:
-            for bytes_tuple in pretokenize(txt):
-                tmp_freq_table[bytes_tuple] += 1
-
-    return tmp_freq_table
-
-
 def train_bpe(
     input_path: str | os.PathLike[str], max_vocab_size: int, special_tokens: list[str], n_proc: int = 1
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
@@ -186,15 +186,16 @@ def train_bpe(
                 )
             )
 
-    for freq_table_chunk in freq_table_parallel:
-        freq_table.update(freq_table_chunk)
+        #  for freq_table_chunk in freq_table_parallel:
+        #      freq_table.update(freq_table_chunk)
 
-    max_merges_count = max_vocab_size - VOCAB_BASE_SIZE - len(special_tokens)
-    merges, new_vocab_words = merge(freq_table, max_merges_count)
+        #  max_merges_count = max_vocab_size - VOCAB_BASE_SIZE - len(special_tokens)
+        #  merges, new_vocab_words = merge(freq_table, max_merges_count)
 
-    cur_vocab_len = len(vocab)
-    for nw in new_vocab_words:
-        vocab[cur_vocab_len] = nw
-        cur_vocab_len += 1
+        #  cur_vocab_len = len(vocab)
+        #  for nw in new_vocab_words:
+        #      vocab[cur_vocab_len] = nw
+        #      cur_vocab_len += 1
 
+    merges = []
     return (vocab, merges)
