@@ -104,18 +104,18 @@ def merge(
     # optimization 1 - use a reverse index with <pair>: add((<word>, <count>)) after picking the winning pair
     #   so that we don't traverse each freq_table key to find in which word, the pair appear
     words = list(freq_table.items())
+    index_pair_to_count: Counter[tuple[bytes, bytes]] = Counter()
+    index_pair_to_word_slots: defaultdict[tuple[bytes, bytes], set[int]] = defaultdict(set[int])
+
+    # gather all the pairs to merge with respective cumulative count
+    for pos, (word, count) in enumerate(words):
+        for w_pos in range(len(word) - 1):
+            byte_pair = (word[w_pos], word[w_pos + 1])
+            index_pair_to_word_slots[byte_pair].add(pos)
+            index_pair_to_count[byte_pair] += count
 
     # merge max_merges times
     for i in tqdm(range(max_merges), desc="bpe merges"):
-        index_pair_to_word_slots: defaultdict[tuple[bytes, bytes], set[int]] = defaultdict(set[int])
-        index_pair_to_count: Counter[tuple[bytes, bytes]] = Counter()
-        # gather all the pairs to merge with respective cumulative count
-        for pos, (word, count) in enumerate(words):
-            for w_pos in range(len(word) - 1):
-                byte_pair = (word[w_pos], word[w_pos + 1])
-                index_pair_to_word_slots[byte_pair].add(pos)
-                index_pair_to_count[byte_pair] += count
-
         # we must check if there is any pair still mergeable
         # (if == 0, then it means we don't have pairs anymore, only single tokens hence nothing to merge)
         if len(index_pair_to_word_slots) == 0:
@@ -124,9 +124,17 @@ def merge(
         # take the winning pair, first by count then by lexographically greater bytes and merge it
         max_pair_and_count = max(index_pair_to_count.items(), key=lambda pair: (pair[1], pair[0]))
         max_pair = max_pair_and_count[0]
+        byte1: bytes = max_pair[0]
+        byte2: bytes = max_pair[1]
 
         for slot in index_pair_to_word_slots[max_pair]:
             cur_word, cur_count = words[slot]
+
+            # decrement the count since we're gonna merge bytes
+            for cur_w_pos in range(len(cur_word) - 1):
+                byte_pair = (cur_word[cur_w_pos], cur_word[cur_w_pos + 1])
+                index_pair_to_count[byte_pair] -= cur_count
+
             new_word: list[bytes] = []
             i = 0
             while i < len(cur_word):
@@ -137,13 +145,19 @@ def merge(
                     new_word.append(cur_word[i])
                     i += 1
 
+            # restore the decremented count on the bytes not merged, and add new one on the bytes merged
+            for new_w_pos in range(len(new_word) - 1):
+                byte_pair = (new_word[new_w_pos], new_word[new_w_pos + 1])
+                index_pair_to_count[byte_pair] += cur_count
+                index_pair_to_word_slots[byte_pair].add(slot)
+
             words[slot] = (tuple(new_word), cur_count)
 
-        # store the new entries to insert in vocab
-        new_vocab_words.append(max_pair[0] + max_pair[1])
+        _ = index_pair_to_count.pop((byte1, byte2), None)
+        _ = index_pair_to_word_slots.pop((byte1, byte2), None)
 
-        byte1: bytes = max_pair[0]
-        byte2: bytes = max_pair[1]
+        # store the new entries to insert in vocab and also update merges with the inplace pairs
+        new_vocab_words.append(max_pair[0] + max_pair[1])
         merges.append((byte1, byte2))
     return (merges, new_vocab_words)
 

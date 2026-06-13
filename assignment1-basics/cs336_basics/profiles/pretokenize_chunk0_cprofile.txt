@@ -1,29 +1,48 @@
-         109024702 function calls (109024701 primitive calls) in 65.932 seconds
+         160331224 function calls (160331223 primitive calls) in 75.933 seconds
 
    Ordered by: internal time
+   List reduced from 72 to 40 due to restriction <40>
 
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-        1   54.192   54.192   63.882   63.882 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/bpe_tokenizer/bpe_parallel.py:63(pretokenize)
-108954899    9.687    0.000    9.687    0.000 {method 'group' of '_regex.Match' objects}
-        1    0.905    0.905    0.905    0.905 {method 'decode' of 'bytes' objects}
-        1    0.783    0.783    0.783    0.783 {method 'split' of 'str' objects}
-        1    0.347    0.347    0.347    0.347 {method 'read' of '_io.BufferedReader' objects}
-        1    0.010    0.010   65.930   65.930 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/bpe_tokenizer/bpe_parallel.py:80(pretokenize_worker)
-    69754    0.004    0.000    0.004    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/collections/__init__.py:613(__missing__)
-        1    0.002    0.002    0.002    0.002 {method '__exit__' of '_io._IOBase' objects}
-        1    0.002    0.002    0.002    0.002 {method 'disable' of '_lsprof.Profiler' objects}
+   543767   55.171    0.000   67.005    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/bpe_tokenizer/bpe_parallel.py:63(pretokenize)
+107322122    9.037    0.000    9.037    0.000 {method 'group' of '_regex.Match' objects}
+        1    8.055    8.055   75.933   75.933 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/bpe_tokenizer/bpe_parallel.py:80(pretokenize_worker)
+ 50289633    2.337    0.000    2.337    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/collections/__init__.py:613(__missing__)
+        1    0.495    0.495    0.495    0.495 {method 'split' of '_regex.Pattern' objects}
+   543768    0.265    0.000    0.302    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/collections/__init__.py:599(__init__)
+        1    0.204    0.204    0.204    0.204 {method 'decode' of 'bytes' objects}
+   543767    0.160    0.000    0.160    0.000 {method 'finditer' of '_regex.Pattern' objects}
+        1    0.106    0.106    0.106    0.106 {method 'read' of '_io.BufferedReader' objects}
+   543769    0.065    0.000    0.065    0.000 {method 'items' of 'dict' objects}
+   543768    0.037    0.000    0.037    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/collections/__init__.py:673(update)
         1    0.000    0.000    0.000    0.000 {built-in method _io.open}
-        2    0.000    0.000    0.000    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/collections/__init__.py:599(__init__)
-        1    0.000    0.000    0.000    0.000 {method 'finditer' of '_regex.Pattern' objects}
-        2    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/bpe_tokenizer/bpe_parallel.py:88(<genexpr>)
+        1    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_main.py:459(_compile)
+       33    0.000    0.000    0.000    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/enum.py:1607(__and__)
+      105    0.000    0.000    0.000    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/enum.py:1589(_get_value)
+        1    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_regex_core.py:462(parse_sequence)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+      187    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}
+        1    0.000    0.000    0.000    0.000 {method '__exit__' of '_io._IOBase' objects}
         1    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_main.py:387(escape)
+        3    0.000    0.000    0.000    0.000 {built-in method _locale.setlocale}
+       35    0.000    0.000    0.000    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/enum.py:695(__call__)
+       13    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_regex_core.py:2588(__init__)
+        1    0.000    0.000    0.496    0.496 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_main.py:324(split)
+        1    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_regex_core.py:3514(optimise)
+       55    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+        1    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_regex_core.py:3526(pack_characters)
+       35    0.000    0.000    0.000    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/enum.py:1156(__new__)
+        1    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_regex_core.py:452(_parse_pattern)
+        2    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/bpe_tokenizer/bpe_parallel.py:88(<genexpr>)
       2/1    0.000    0.000    0.000    0.000 {method 'join' of 'str' objects}
-        2    0.000    0.000    0.000    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/collections/__init__.py:673(update)
-       15    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
-        1    0.000    0.000    0.000    0.000 {method 'items' of 'dict' objects}
-        2    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}
-       11    0.000    0.000    0.000    0.000 {method 'isspace' of 'str' objects}
-        1    0.000    0.000    0.000    0.000 {method 'seek' of '_io.BufferedReader' objects}
-        1    0.000    0.000    0.000    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/pathlib/_local.py:227(__str__)
+        1    0.000    0.000    0.000    0.000 {built-in method regex._regex.compile}
+        1    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_regex_core.py:4291(match)
+        1    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_regex_core.py:3608(_flush_characters)
+        2    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_regex_core.py:1256(parse_escape)
+        1    0.000    0.000    0.000    0.000 /Users/ubreglia/.local/share/uv/python/cpython-3.13.7-macos-aarch64-none/lib/python3.13/locale.py:642(getpreferredencoding)
+       16    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_regex_core.py:4148(get)
+        1    0.000    0.000    0.000    0.000 /Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/.venv/lib/python3.13/site-packages/regex/_regex_core.py:3510(fix_groups)
+        1    0.000    0.000    0.000    0.000 {built-in method _locale.getencoding}
+        1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:1390(_handle_fromlist)
 
 
