@@ -101,8 +101,9 @@ def merge(
     new_vocab_words: list[bytes] = []
     merges: list[tuple[bytes, bytes]] = []
 
-    # optimization 1 - use a reverse index with <pair>: add((<word>, <count>)) after picking the winning pair
+    # optimization - use a reverse index with <pair>: add((<word>, <count>)) after picking the winning pair
     #   so that we don't traverse each freq_table key to find in which word, the pair appear
+    # IMPORTANT: edit them in-place during merge
     words = list(freq_table.items())
     index_pair_to_count: Counter[tuple[bytes, bytes]] = Counter()
     index_pair_to_word_slots: defaultdict[tuple[bytes, bytes], set[int]] = defaultdict(set[int])
@@ -180,7 +181,7 @@ def train_bpe(
         num_processes = n_proc
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
 
-        # optimization 2 - sending chunks to different processes
+        # optimization - sending chunks to different processes (parallel)
         pretokenize_args: list[tuple[str, int, int, list[str]]] = []
         for start, end in zip(boundaries[:-1], boundaries[1:]):
             pretokenize_args.append((str(input_path), start, end, special_tokens))
