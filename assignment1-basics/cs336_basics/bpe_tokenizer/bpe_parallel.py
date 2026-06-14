@@ -62,14 +62,9 @@ def find_chunk_boundaries(
 
 def pretokenize(text: str):
     txt_split = gpt_regex_pattern.finditer(text)
-    word_count: Counter[str] = Counter()
 
     for s_objects in txt_split:
-        # count the words occurrences
-        word = s_objects.group()
-        word_count[word] += 1
-
-    return word_count
+        yield s_objects.group()
 
 
 def pretokenize_worker_star(args: tuple[str, int, int, list[str]]) -> Counter[str]:
@@ -88,7 +83,7 @@ def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: li
         delimited_special_tokens = "|".join(regex.escape(st) for st in special_tokens)
         txt_docs = regex.split(delimited_special_tokens, corpus_text_chunk)
         for txt in txt_docs:
-            words_with_count = pretokenize(txt)
+            words_with_count = Counter(pretokenize(txt))
             for word, cnt in words_with_count.items():
                 tmp_pretoken_freq_table[word] += cnt
 

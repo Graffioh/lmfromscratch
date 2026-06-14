@@ -10,5 +10,8 @@ if __name__ == "__main__":
     )
 
     # pprint.pprint(vars(tknzr))
-    token_ids_from_encode = tknzr.encode("hello lower")
-    pprint.pprint(token_ids_from_encode)
+    token_ids_from_encode = tknzr.encode("hello hello hello")
+    print("ENCODE: ", token_ids_from_encode)
+
+    text_from_token_ids = tknzr.decode(token_ids_from_encode)
+    print("DECODE: ", text_from_token_ids)
