@@ -184,25 +184,16 @@ def train_bpe(
         with Pool(
             num_processes,
         ) as pool:
-            pretoken_freq_table_from_parallel = list(
-                tqdm(
-                    # results arrive as each chunk completes, with yield, so we can use tqdm
-                    pool.imap_unordered(pretokenize_worker_star, pretokenize_args),
-                    total=len(pretokenize_args),
-                    desc="pretokenize chunks",
-                )
-            )
+            print("Pretokenization in progress")
+            for pretoken_freq_table_chunk in pool.imap_unordered(pretokenize_worker_star, pretokenize_args):
+                for pretoken, count in pretoken_freq_table_chunk.items():
+                    bytes_from_pretoken = pretoken.encode("utf-8")
+                    bytes_split: list[bytes] = []
 
-        for pretoken_freq_table_chunk in pretoken_freq_table_from_parallel:
-            freq_table_chunk: Counter[tuple[bytes, ...]] = Counter()
-            for pretoken, count in pretoken_freq_table_chunk.items():
-                bytes_from_pretoken = pretoken.encode("utf-8")
-                bytes_split: list[bytes] = []
-                for b in bytes_from_pretoken:
-                    bytes_split.append(bytes([b]))
+                    for b in bytes_from_pretoken:
+                        bytes_split.append(bytes([b]))
 
-                freq_table_chunk[tuple(bytes_split)] = count
-            freq_table.update(freq_table_chunk)
+                    freq_table[tuple(bytes_split)] += count
 
         max_merges_count = max_vocab_size - VOCAB_BASE_SIZE - len(special_tokens)
         merges, new_vocab_words = merge(freq_table, max_merges_count)
