@@ -67,14 +67,18 @@ class Tokenizer:
         return token_ids
 
     def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
-        raise NotImplementedError
+        for string in iterable:
+            t_ids = self.encode(string)
+            yield from t_ids
 
     def decode(self, ids: list[int]) -> str:
-        text: list[str] = []
+        bytes_list: list[bytes] = []
         for id in ids:
             if id not in self.vocab:
-                text.append(b"U+FFFD".decode("utf-8"))
+                bytes_list.append("�".encode("utf-8"))
             else:
-                text.append(self.vocab[id].decode("utf-8"))
+                bytes_list.append(self.vocab[id])
 
-        return "".join(text)
+        bytes_obj = b"".join(bytes_list)
+
+        return bytes_obj.decode("utf-8")
