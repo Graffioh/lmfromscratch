@@ -75,17 +75,32 @@ def pretokenize_worker_star(args: tuple[str, int, int, list[str]]) -> Counter[st
 def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: list[str]) -> Counter[str]:
     tmp_pretoken_freq_table: Counter[str] = Counter()
 
+    def update_freq_table_count_based_on_span(txt: str):
+        for word in txt:
+            tmp_pretoken_freq_table[word] += 1
+
     with open(input_path, "rb") as f:
         _ = f.seek(start)
         corpus_text_chunk = f.read(end - start).decode("utf-8", errors="ignore")
 
-        # split docs by special tokens (e.g. EOT delimiter) and pretokenize
-        delimited_special_tokens = "|".join(regex.escape(st) for st in special_tokens)
-        txt_docs = regex.split(delimited_special_tokens, corpus_text_chunk)
-        for txt in txt_docs:
-            words_with_count = Counter(pretokenize(txt))
-            for word, cnt in words_with_count.items():
-                tmp_pretoken_freq_table[word] += cnt
+        if len(special_tokens) != 0:
+            # split docs by special tokens (e.g. EOT delimiter) and pretokenize
+            delimited_special_tokens = "|".join(regex.escape(st) for st in special_tokens)
+            # optim - move from .split to .finditer
+            txt_splits_iterator = regex.finditer(delimited_special_tokens, corpus_text_chunk)
+            prev_end = 0
+            for txt_matches in txt_splits_iterator:
+                txt_start = txt_matches.start()
+                txt_span = corpus_text_chunk[prev_end:txt_start]
+                prev_end = txt_matches.end()
+
+                update_freq_table_count_based_on_span(txt_span)
+
+            final_txt_span = corpus_text_chunk[prev_end:]
+            update_freq_table_count_based_on_span(final_txt_span)
+        else:
+            # no special tokens, so process the whole corpus chunk
+            update_freq_table_count_based_on_span(corpus_text_chunk)
 
     return tmp_pretoken_freq_table
 
