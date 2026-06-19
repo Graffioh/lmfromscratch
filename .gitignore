@@ -51,3 +51,6 @@ wandb/
 # ---- IDE ----
 .vscode/
 .idea/
+
+# ---- External course material clones ----
+lectures/

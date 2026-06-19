@@ -11,7 +11,7 @@ from torch import Tensor
 
 from cs336_basics.bpe_tokenizer.bpe_parallel import train_bpe
 from cs336_basics.bpe_tokenizer.tokenizer import Tokenizer
-from cs336_basics.transformer.layers import Embedding, Linear, RMSNormLayer
+from cs336_basics.transformer.layers import Embedding, Linear, RMSNorm
 
 
 def run_linear(
@@ -389,7 +389,7 @@ def run_rmsnorm(
         RMSNorm of the `in_features`.
     """
     sd = {"G": weights}
-    rmsl = RMSNormLayer(d_model, eps)
+    rmsl = RMSNorm(d_model, eps)
     _ = rmsl.load_state_dict(sd)
 
     return rmsl.forward(in_features)

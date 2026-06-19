@@ -17,7 +17,7 @@ class Linear(torch.nn.Module):
             torch.empty(out_features, in_features, dtype=dtype, device=device), mean=0, std=std, a=-3 * std, b=3 * std
         )
 
-        self.W: torch.nn.Parameter = torch.nn.Parameter(trunc_normal_init_w)
+        self.W = torch.nn.Parameter(trunc_normal_init_w)
 
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -42,20 +42,20 @@ class Embedding(torch.nn.Module):
             b=3,
         )
 
-        self.We: torch.nn.Parameter = torch.nn.Parameter(trunc_normal_init_emb)
+        self.We = torch.nn.Parameter(trunc_normal_init_emb)
 
     @override
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
         return self.We[token_ids]
 
 
-class RMSNormLayer(torch.nn.Module):
+class RMSNorm(torch.nn.Module):
     def __init__(
         self, d_model: int, eps: float = 1e-5, device: torch.device | None = None, dtype: torch.dtype | None = None
     ):
         torch.nn.Module.__init__(self)
 
-        self.G: torch.nn.Parameter = torch.nn.Parameter(torch.zeros(d_model, device=device, dtype=dtype))
+        self.G = torch.nn.Parameter(torch.zeros(d_model, device=device, dtype=dtype))
         self.eps = eps
 
     @override
