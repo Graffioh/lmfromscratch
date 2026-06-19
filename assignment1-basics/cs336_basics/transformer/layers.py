@@ -1,4 +1,5 @@
 from math import sqrt
+from typing import override
 
 import einops
 import torch
@@ -18,6 +19,7 @@ class Linear(torch.nn.Module):
 
         self.W: torch.nn.Parameter = torch.nn.Parameter(trunc_normal_init_w)
 
+    @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return einops.einsum(self.W, x, "out_features in_features, ... in_features -> ... out_features")
 
@@ -33,7 +35,7 @@ class Embedding(torch.nn.Module):
         torch.nn.Module.__init__(self)
 
         trunc_normal_init_emb = torch.nn.init.trunc_normal_(
-            torch.empty(num_embeddings, embedding_dim, dtype=dtype, device=device),
+            torch.empty(num_embeddings, embedding_dim, device=device, dtype=dtype),
             mean=0,
             std=1,
             a=-3,
@@ -42,5 +44,28 @@ class Embedding(torch.nn.Module):
 
         self.We: torch.nn.Parameter = torch.nn.Parameter(trunc_normal_init_emb)
 
+    @override
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
         return self.We[token_ids]
+
+
+class RMSNormLayer(torch.nn.Module):
+    def __init__(
+        self, d_model: int, eps: float = 1e-5, device: torch.device | None = None, dtype: torch.dtype | None = None
+    ):
+        torch.nn.Module.__init__(self)
+
+        self.G: torch.nn.Parameter = torch.nn.Parameter(torch.zeros(d_model, device=device, dtype=dtype))
+        self.eps = eps
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        in_dtype = x.dtype
+        x = x.to(torch.float32)
+        _, _, d_model = x.shape
+
+        in_rms = (1 / d_model) * torch.sum(torch.pow(x, 2), dim=-1, keepdim=True) + self.eps
+        rms = torch.sqrt(in_rms)
+        result = (x / rms) * self.G
+
+        return result.to(in_dtype)
