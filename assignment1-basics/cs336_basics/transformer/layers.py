@@ -105,3 +105,40 @@ class SwiGLU(torch.nn.Module):
         down_proj = einops.einsum(self.Wd, glu, "d_model d_ff, ... d_ff -> ... d_model")
 
         return down_proj
+
+
+class RotaryPositionalEmbedding(torch.nn.Module):
+    def __init__(self, theta: float, d_k: int, max_seq_len: int, device: torch.device | None = None):
+        torch.nn.Module.__init__(self)
+
+        positions = [i for i in range(max_seq_len)]
+        inv_freq = [(1 / theta ** (2 * k / d_k)) for k in range(d_k // 2)]
+        POS = torch.Tensor(positions).to(device)
+        IF = torch.Tensor(inv_freq).to(device)
+
+        angles = POS[:, None] * IF[None, :]
+        COS = torch.cos(angles)
+        SIN = torch.sin(angles)
+
+        # (2, max_seq_len, d_k)
+        self.register_buffer("sincos_buf", torch.stack((COS, SIN)), persistent=False)
+
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
+        # split and get pairs along d_k last dimension
+        x_pairs = einops.rearrange(x, "... (d_k_pair two) -> ... d_k_pair two", two=2)
+        a = x_pairs[..., 0]
+        b = x_pairs[..., 1]
+
+        # get cos and sin for rotation
+        cos = self.get_buffer("sincos_buf")[0, token_positions, :]
+        sin = self.get_buffer("sincos_buf")[1, token_positions, :]
+
+        # rotate pairs
+        a_rotated = a * cos - b * sin
+        b_rotated = a * sin + b * cos
+
+        # reshape to input shape
+        rotated_pairs = torch.stack((a_rotated, b_rotated), dim=-1)
+        x_rotated = einops.rearrange(rotated_pairs, "... d_k_pair two -> ... (d_k_pair two)", two=2)
+
+        return x_rotated

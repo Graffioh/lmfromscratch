@@ -11,7 +11,7 @@ from torch import Tensor
 
 from cs336_basics.bpe_tokenizer.bpe_parallel import train_bpe
 from cs336_basics.bpe_tokenizer.tokenizer import Tokenizer
-from cs336_basics.transformer.layers import Embedding, Linear, RMSNorm, SwiGLU
+from cs336_basics.transformer.layers import Embedding, Linear, RMSNorm, RotaryPositionalEmbedding, SwiGLU
 
 
 def run_linear(
@@ -208,7 +208,10 @@ def run_rope(
     Returns:
         Float[Tensor, " ... sequence_length d_k"]: Tensor with RoPEd input.
     """
-    raise NotImplementedError
+    rope = RotaryPositionalEmbedding(theta, d_k, max_seq_len)
+    result = rope.forward(in_query_or_key, token_positions)
+
+    return result
 
 
 def run_transformer_block(
