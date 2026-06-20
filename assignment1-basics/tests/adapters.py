@@ -11,7 +11,7 @@ from torch import Tensor
 
 from cs336_basics.bpe_tokenizer.bpe_parallel import train_bpe
 from cs336_basics.bpe_tokenizer.tokenizer import Tokenizer
-from cs336_basics.transformer.layers import Embedding, Linear, RMSNorm
+from cs336_basics.transformer.layers import Embedding, Linear, RMSNorm, SwiGLU
 
 
 def run_linear(
@@ -86,14 +86,12 @@ def run_swiglu(
     Returns:
         Float[Tensor, "... d_model"]: Output embeddings of the same shape as the input embeddings.
     """
-    # Example:
-    # If your state dict keys match, you can use `load_state_dict()`
-    # swiglu.load_state_dict(weights)
-    # You can also manually assign the weights
-    # swiglu.w1.weight.data = w1_weight
-    # swiglu.w2.weight.data = w2_weight
-    # swiglu.w3.weight.data = w3_weight
-    raise NotImplementedError
+    sd = {"Wu": w1_weight, "Wd": w2_weight, "Wg": w3_weight}
+
+    swiglu = SwiGLU(d_model, d_ff)
+    _ = swiglu.load_state_dict(sd)
+
+    return swiglu.forward(in_features)
 
 
 def run_scaled_dot_product_attention(
