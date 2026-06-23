@@ -4,6 +4,8 @@ from typing import override
 import einops
 import torch
 
+from .ops import attention
+
 
 class Linear(torch.nn.Module):
     def __init__(
@@ -142,3 +144,52 @@ class RotaryPositionalEmbedding(torch.nn.Module):
         x_rotated = einops.rearrange(rotated_pairs, "... d_k_pair two -> ... (d_k_pair two)", two=2)
 
         return x_rotated
+
+
+class CausalMultiHeadSelfAttention(torch.nn.Module):
+    def __init__(
+        self, d_model: int, num_heads: int, dtype: torch.dtype | None = None, device: torch.device | None = None
+    ):
+        torch.nn.Module.__init__(self)
+
+        variance: float = 2 / (d_model + d_model)
+        std: float = sqrt(variance)
+        trunc_normal_init_q = torch.nn.init.trunc_normal_(
+            torch.empty((d_model, d_model), dtype=dtype, device=device), mean=0, std=std, a=-3 * std, b=3 * std
+        )
+        trunc_normal_init_k = torch.nn.init.trunc_normal_(
+            torch.empty((d_model, d_model), dtype=dtype, device=device), mean=0, std=std, a=-3 * std, b=3 * std
+        )
+        trunc_normal_init_v = torch.nn.init.trunc_normal_(
+            torch.empty((d_model, d_model), dtype=dtype, device=device), mean=0, std=std, a=-3 * std, b=3 * std
+        )
+        trunc_normal_init_o = torch.nn.init.trunc_normal_(
+            torch.empty((d_model, d_model), dtype=dtype, device=device), mean=0, std=std, a=-3 * std, b=3 * std
+        )
+
+        self.Wq = torch.nn.Parameter(trunc_normal_init_q)
+        self.Wk = torch.nn.Parameter(trunc_normal_init_k)
+        self.Wv = torch.nn.Parameter(trunc_normal_init_v)
+
+        self.Wo = torch.nn.Parameter(trunc_normal_init_o)
+        self.h = num_heads
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        seq_len = x.shape[-2]
+        mask = torch.tril(torch.ones((seq_len, seq_len), dtype=torch.bool)).to(x.device)
+        d_k = d_q = d_v = self.Wk.shape[-2] // self.h
+
+        Q = einops.einsum(self.Wq, x, "d_model in_d_model, ... seq_len in_d_model -> ... seq_len d_model")
+        Q = einops.rearrange(Q, "... seq_len (num_heads d_q) -> ... num_heads seq_len d_q", num_heads=self.h, d_q=d_q)
+
+        K = einops.einsum(self.Wk, x, "d_model in_d_model, ... seq_len in_d_model -> ... seq_len d_model")
+        K = einops.rearrange(K, "... seq_len (num_heads d_k) -> ... num_heads seq_len d_k", num_heads=self.h, d_k=d_k)
+
+        V = einops.einsum(self.Wv, x, "d_model in_d_model, ... seq_len in_d_model -> ... seq_len d_model")
+        V = einops.rearrange(V, "... seq_len (num_heads d_v) -> ... num_heads seq_len d_v", num_heads=self.h, d_v=d_v)
+
+        multi_head = attention(Q, K, V, mask)
+
+        Wo = einops.rearrange(self.Wo, "d_model (num_heads d_v) -> num_heads d_v d_model", num_heads=self.h, d_v=d_v)
+        return einops.einsum(Wo, multi_head, "num_heads d_v d_model, ... num_heads seq_len d_v -> ... seq_len d_model")
