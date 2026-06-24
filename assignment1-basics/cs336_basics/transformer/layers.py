@@ -209,3 +209,36 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
 
         Wo = einops.rearrange(self.Wo, "d_model (num_heads d_v) -> num_heads d_v d_model", num_heads=self.h, d_v=d_v)
         return einops.einsum(Wo, multi_head, "num_heads d_v d_model, ... num_heads seq_len d_v -> ... seq_len d_model")
+
+
+class PreNormTransformerBlock(torch.nn.Module):
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        d_ff: int,
+        theta: float | None = None,
+        max_seq_len: int | None = None,
+        token_positions: torch.Tensor | None = None,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
+    ):
+        torch.nn.Module.__init__(self)
+
+        self.rms_norm_l1 = RMSNorm(d_model)
+
+        self.cmha_l = CausalMultiHeadSelfAttention(
+            d_model, num_heads, theta, max_seq_len, token_positions, dtype=dtype, device=device
+        )
+
+        self.rms_norm_l2 = RMSNorm(d_model)
+
+        self.ff_l = SwiGLU(d_model, d_ff, device=device, dtype=dtype)
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        rms_norm_1 = self.rms_norm_l1.forward(x)
+        x += self.cmha_l.forward(rms_norm_1)
+        rms_norm_2 = self.rms_norm_l2.forward(x)
+        x += self.ff_l.forward(rms_norm_2)
+        return x

@@ -15,6 +15,7 @@ from cs336_basics.transformer.layers import (
     CausalMultiHeadSelfAttention,
     Embedding,
     Linear,
+    PreNormTransformerBlock,
     RMSNorm,
     RotaryPositionalEmbedding,
     SwiGLU,
@@ -300,7 +301,23 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    sd = {
+        "rms_norm_l1.G": weights["ln1.weight"],
+        "cmha_l.Wq": weights["attn.q_proj.weight"],
+        "cmha_l.Wk": weights["attn.k_proj.weight"],
+        "cmha_l.Wv": weights["attn.v_proj.weight"],
+        "cmha_l.Wo": weights["attn.output_proj.weight"],
+        "ff_l.Wu": weights["ffn.w1.weight"],
+        "ff_l.Wd": weights["ffn.w2.weight"],
+        "ff_l.Wg": weights["ffn.w3.weight"],
+        "rms_norm_l2.G": weights["ln2.weight"],
+    }
+
+    token_positions = torch.arange(0, in_features.shape[-2])
+    t_block = PreNormTransformerBlock(d_model, num_heads, d_ff, theta, max_seq_len, token_positions)
+    t_block.load_state_dict(sd)
+
+    return t_block.forward(in_features)
 
 
 def run_transformer_lm(
