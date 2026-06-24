@@ -19,6 +19,7 @@ from cs336_basics.transformer.layers import (
     RMSNorm,
     RotaryPositionalEmbedding,
     SwiGLU,
+    TransformerLM,
 )
 from cs336_basics.transformer.ops import attention, softmax
 
@@ -399,7 +400,26 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    sd = {"emb.We": weights["token_embeddings.weight"]}
+    for i in range(num_layers):
+        sd[f"t_blocks.{i}.rms_norm_l1.G"] = weights[f"layers.{i}.ln1.weight"]
+        sd[f"t_blocks.{i}.cmha_l.Wq"] = weights[f"layers.{i}.attn.q_proj.weight"]
+        sd[f"t_blocks.{i}.cmha_l.Wk"] = weights[f"layers.{i}.attn.k_proj.weight"]
+        sd[f"t_blocks.{i}.cmha_l.Wv"] = weights[f"layers.{i}.attn.v_proj.weight"]
+        sd[f"t_blocks.{i}.cmha_l.Wo"] = weights[f"layers.{i}.attn.output_proj.weight"]
+        sd[f"t_blocks.{i}.ff_l.Wu"] = weights[f"layers.{i}.ffn.w1.weight"]
+        sd[f"t_blocks.{i}.ff_l.Wd"] = weights[f"layers.{i}.ffn.w2.weight"]
+        sd[f"t_blocks.{i}.ff_l.Wg"] = weights[f"layers.{i}.ffn.w3.weight"]
+        sd[f"t_blocks.{i}.rms_norm_l2.G"] = weights[f"layers.{i}.ln2.weight"]
+    sd["rms_norm_l.G"] = weights["ln_final.weight"]
+    sd["ll.W"] = weights["lm_head.weight"]
+
+    token_positions = torch.arange(0, in_indices.shape[-1])
+    transformer = TransformerLM(
+        vocab_size, d_model, num_heads, d_ff, rope_theta, context_length, token_positions, num_layers
+    )
+    transformer.load_state_dict(sd)
+    return transformer.forward(in_indices)
 
 
 def run_rmsnorm(

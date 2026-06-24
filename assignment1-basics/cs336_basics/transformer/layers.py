@@ -242,3 +242,47 @@ class PreNormTransformerBlock(torch.nn.Module):
         rms_norm_2 = self.rms_norm_l2.forward(x)
         x += self.ff_l.forward(rms_norm_2)
         return x
+
+
+class TransformerLM(torch.nn.Module):
+    def __init__(
+        self,
+        vocab_size: int,
+        d_model: int,
+        num_heads: int,
+        d_ff: int,
+        theta: float,
+        context_length: int,
+        token_positions: torch.Tensor,
+        num_layers: int,
+    ):
+        torch.nn.Module.__init__(self)
+
+        self.emb = Embedding(vocab_size, d_model)
+        self.t_blocks = torch.nn.ModuleList()
+        for _ in range(num_layers):
+            self.t_blocks.append(
+                PreNormTransformerBlock(
+                    d_model, num_heads, d_ff, theta, max_seq_len=context_length, token_positions=token_positions
+                )
+            )
+        self.rms_norm_l = RMSNorm(d_model)
+        self.ll = Linear(d_model, vocab_size)
+
+    @override
+    def forward(self, ids: torch.Tensor) -> torch.Tensor:
+        # (..., seq_len) -> (..., seq_len, d_model)
+        tokens = self.emb.forward(ids)
+
+        t_res = self.t_blocks[0].forward(tokens)
+        for t in self.t_blocks[1:]:
+            # (..., seq_len, d_model)
+            t_res = t.forward(t_res)
+
+        # (..., seq_len, d_model)
+        normalized = self.rms_norm_l.forward(t_res)
+
+        # (..., seq_len, vocab_size)
+        output_emb = self.ll.forward(normalized)
+
+        return output_emb
