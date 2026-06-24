@@ -148,7 +148,14 @@ class RotaryPositionalEmbedding(torch.nn.Module):
 
 class CausalMultiHeadSelfAttention(torch.nn.Module):
     def __init__(
-        self, d_model: int, num_heads: int, dtype: torch.dtype | None = None, device: torch.device | None = None
+        self,
+        d_model: int,
+        num_heads: int,
+        theta: float | None = None,
+        max_seq_len: int | None = None,
+        token_positions: torch.Tensor | None = None,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
     ):
         torch.nn.Module.__init__(self)
 
@@ -174,6 +181,11 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         self.Wo = torch.nn.Parameter(trunc_normal_init_o)
         self.h = num_heads
 
+        self.rope_l = None
+        if theta and max_seq_len and token_positions is not None:
+            self.token_positions = token_positions
+            self.rope_l = RotaryPositionalEmbedding(theta, d_model // num_heads, max_seq_len, device=device)
+
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         seq_len = x.shape[-2]
@@ -182,9 +194,13 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
 
         Q = einops.einsum(self.Wq, x, "d_model in_d_model, ... seq_len in_d_model -> ... seq_len d_model")
         Q = einops.rearrange(Q, "... seq_len (num_heads d_q) -> ... num_heads seq_len d_q", num_heads=self.h, d_q=d_q)
+        if self.rope_l:
+            Q = self.rope_l.forward(Q, self.token_positions)
 
         K = einops.einsum(self.Wk, x, "d_model in_d_model, ... seq_len in_d_model -> ... seq_len d_model")
         K = einops.rearrange(K, "... seq_len (num_heads d_k) -> ... num_heads seq_len d_k", num_heads=self.h, d_k=d_k)
+        if self.rope_l:
+            K = self.rope_l.forward(K, self.token_positions)
 
         V = einops.einsum(self.Wv, x, "d_model in_d_model, ... seq_len in_d_model -> ... seq_len d_model")
         V = einops.rearrange(V, "... seq_len (num_heads d_v) -> ... num_heads seq_len d_v", num_heads=self.h, d_v=d_v)
