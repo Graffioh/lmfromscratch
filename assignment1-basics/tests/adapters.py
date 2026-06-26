@@ -21,7 +21,7 @@ from cs336_basics.transformer.layers import (
     SwiGLU,
     TransformerLM,
 )
-from cs336_basics.transformer.ops import attention, softmax
+from cs336_basics.transformer.ops import attention, cross_entropy, softmax
 
 
 def run_linear(
@@ -517,7 +517,7 @@ def run_cross_entropy(
     Returns:
         Float[Tensor, ""]: The average cross-entropy loss across examples.
     """
-    raise NotImplementedError
+    return cross_entropy(inputs, targets)
 
 
 def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
