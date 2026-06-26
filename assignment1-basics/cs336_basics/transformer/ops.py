@@ -9,6 +9,7 @@ def softmax(x: torch.Tensor, dim: int) -> torch.Tensor:
     return torch.exp(x - max_x[0]) / torch.sum(torch.exp(x - max_x[0]), dim=dim, keepdim=True)
 
 
+# to simplify and stabilize cross entropy calculation
 def log_softmax(x: torch.Tensor, dim: int) -> torch.Tensor:
     max_x = torch.max(x, dim=dim, keepdim=True)
     # must do: add back the max
