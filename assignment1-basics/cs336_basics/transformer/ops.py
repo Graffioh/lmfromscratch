@@ -43,3 +43,15 @@ def cross_entropy(o: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
     neg_log_likelihood = log_softmax(o, dim=-1)
     losses = neg_log_likelihood[torch.arange(0, o.shape[0]), x]
     return torch.mean(losses)
+
+
+def learning_rate_schedule(t: int, lr_max: float, lr_min: float, warmup_iters: int, cosine_iters: int):
+    lr_t = lr_min
+    if t < warmup_iters:
+        lr_t = (t / warmup_iters) * lr_max
+    elif warmup_iters <= t <= cosine_iters:
+        lr_t = lr_min + (1 + math.cos((t - warmup_iters) / (cosine_iters - warmup_iters) * math.pi)) / 2 * (
+            lr_max - lr_min
+        )
+
+    return lr_t
