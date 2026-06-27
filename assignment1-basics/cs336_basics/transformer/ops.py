@@ -1,4 +1,5 @@
 import math
+from collections.abc import Iterable
 
 import einops
 import torch
@@ -45,7 +46,7 @@ def cross_entropy(o: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
     return torch.mean(losses)
 
 
-def learning_rate_schedule(t: int, lr_max: float, lr_min: float, warmup_iters: int, cosine_iters: int):
+def learning_rate_schedule(t: int, lr_max: float, lr_min: float, warmup_iters: int, cosine_iters: int) -> float:
     lr_t = lr_min
     if t < warmup_iters:
         lr_t = (t / warmup_iters) * lr_max
@@ -55,3 +56,19 @@ def learning_rate_schedule(t: int, lr_max: float, lr_min: float, warmup_iters: i
         )
 
     return lr_t
+
+
+def gradient_clipping(params: Iterable[torch.nn.Parameter], max_norm: float, eps: float = 1e-6):
+    g_squared_sum = 0
+    for p in params:
+        if p.grad is None:
+            continue
+        g_squared_sum += torch.sum(p.grad.data**2)
+
+    g_l2_norm = math.sqrt(g_squared_sum)
+
+    if g_l2_norm >= max_norm:
+        for p in params:
+            if p.grad is None:
+                continue
+            p.grad.data *= max_norm / (g_l2_norm + eps)

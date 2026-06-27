@@ -21,7 +21,7 @@ from cs336_basics.transformer.layers import (
     SwiGLU,
     TransformerLM,
 )
-from cs336_basics.transformer.ops import attention, cross_entropy, learning_rate_schedule, softmax
+from cs336_basics.transformer.ops import attention, cross_entropy, gradient_clipping, learning_rate_schedule, softmax
 from cs336_basics.transformer.optim import AdamW
 
 
@@ -530,7 +530,7 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
 
     The gradients of the parameters (parameter.grad) should be modified in-place.
     """
-    raise NotImplementedError
+    gradient_clipping(parameters, max_l2_norm)
 
 
 def get_adamw_cls() -> Any:
