@@ -40,9 +40,9 @@ def attention(Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor, mask: torch.Ten
     return attn
 
 
-def cross_entropy(o: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+def cross_entropy(o: torch.Tensor, x_idx: torch.Tensor) -> torch.Tensor:
     neg_log_likelihood = log_softmax(o, dim=-1)
-    losses = neg_log_likelihood[torch.arange(0, o.shape[0]), x]
+    losses = torch.gather(neg_log_likelihood, -1, x_idx.unsqueeze(-1))
     return torch.mean(losses)
 
 
