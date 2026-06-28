@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -40,6 +41,9 @@ def train(
     split: Literal["train"] | Literal["valid"] = "train",
     device: torch.device | None = None,
 ):
+
+    torch.autograd.set_detect_anomaly(True, check_nan=False)
+
     if not device:
         device = torch.device("mps")
 
@@ -83,18 +87,17 @@ def train(
             ctx_len,
             device_str=str(device),
         )
-        print("INPUT BATCH SHAPE: ", input_batch.shape)
-        print("target SHAPE", target.shape)
 
         optim.zero_grad()
 
         loss = cross_entropy(model(input_batch), target)
-        print(loss.to(device).item())
+
+        print(f"LOSS it={it} -> ", loss.to(device).item())
 
         loss.backward()
         optim.step()
 
-        save_checkpoint(model=model, optimizer=optim, iteration=it, out=checkpoint_dst)
+        save_checkpoint(model=model, optimizer=optim, iteration=it, out=Path(checkpoint_dst) / f"iteration-{it}")
 
 
 # throwaway

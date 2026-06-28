@@ -238,9 +238,9 @@ class PreNormTransformerBlock(torch.nn.Module):
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         rms_norm_1 = self.rms_norm_l1.forward(x)
-        x += self.cmha_l.forward(rms_norm_1)
+        x = x + self.cmha_l.forward(rms_norm_1)
         rms_norm_2 = self.rms_norm_l2.forward(x)
-        x += self.ff_l.forward(rms_norm_2)
+        x = x + self.ff_l.forward(rms_norm_2)
         return x
 
 
