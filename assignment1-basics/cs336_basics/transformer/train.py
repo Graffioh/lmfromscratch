@@ -20,6 +20,14 @@ OUTPUTS_DIR = REPO_ROOT / "outputs"
 CONFIGS_DIR = REPO_ROOT / "cs336_basics" / "transformer" / "configs"
 
 
+def get_default_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
 def create_dataset_from_txt():
     bpe_tknzr = Tokenizer.from_files(
         vocab_filepath=str(OUTPUTS_DIR / "output_train_vocab_tinystories.pkl"),
@@ -50,7 +58,7 @@ def train(
     torch.autograd.set_detect_anomaly(True, check_nan=False)
 
     if not device:
-        device = torch.device("mps")
+        device = get_default_device()
 
     train_dataset = np.load(train_dataset_src, mmap_mode="r")
     valid_dataset = np.load(valid_dataset_src, mmap_mode="r")
