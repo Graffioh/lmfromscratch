@@ -6,6 +6,7 @@ from typing import Literal
 import numpy as np
 import torch
 
+import wandb
 from cs336_basics.bpe_tokenizer.tokenizer import Tokenizer
 from cs336_basics.transformer.layers import TransformerLM
 from cs336_basics.transformer.loader import get_input_target_pairs, save_checkpoint
@@ -24,7 +25,7 @@ def create_dataset_from_txt():
         "/Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/data/TinyStoriesV2-GPT4-train.txt"
     ) as f:
         train_text = f.read()
-    tokens = bpe_tknzr.encode(train_text[:1600])
+    tokens = bpe_tknzr.encode(train_text[:10000])
     dataset_dst = "/Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/data/smoke-dataset-train.npy"
     np.save(dataset_dst, tokens)
 
@@ -37,7 +38,7 @@ def train(
     checkpoint_dst: str | os.PathLike[str],
     training_config_src: str | os.PathLike[str],
     model_config_src: str | os.PathLike[str],
-    iterations: int = 10,
+    iterations: int = 18,
     split: Literal["train"] | Literal["valid"] = "train",
     device: torch.device | None = None,
 ):
@@ -77,8 +78,15 @@ def train(
         eps=training_config["eps"],
     )
 
-    batch_size = training_config["batch_size"]
+    overall_config = training_config | model_config
+    wandb_run = wandb.init(
+        entity="logberto-na",
+        project="llm-from-scratch-1",
+        config=overall_config,
+    )
 
+    batch_size = training_config["batch_size"]
+    iterations = training_config["iterations"]
     model.train()
     for it in range(iterations):
         input_batch, target = get_input_target_pairs(
@@ -94,10 +102,14 @@ def train(
 
         print(f"LOSS it={it} -> ", loss.to(device).item())
 
+        wandb_run.log({"loss": loss})
+
         loss.backward()
         optim.step()
 
         save_checkpoint(model=model, optimizer=optim, iteration=it, out=Path(checkpoint_dst) / f"iteration-{it}")
+
+    wandb_run.finish()
 
 
 # throwaway
