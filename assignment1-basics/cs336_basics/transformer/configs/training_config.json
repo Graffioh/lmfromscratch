@@ -1,5 +1,5 @@
 {
-    "iterations": 30,
+    "iterations": 20,
     "lr": 0.01,
     "weight_decay": 0.1,
     "beta1": 0.9,

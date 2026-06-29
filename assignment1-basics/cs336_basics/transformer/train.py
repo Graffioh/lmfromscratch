@@ -13,7 +13,6 @@ from cs336_basics.transformer.loader import get_input_target_pairs, save_checkpo
 from cs336_basics.transformer.ops import cross_entropy
 from cs336_basics.transformer.optim import AdamW
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "cs336_basics" / "data"
 OUTPUTS_DIR = REPO_ROOT / "outputs"
@@ -99,10 +98,11 @@ def train(
 
     batch_size = training_config["batch_size"]
     iterations = training_config["iterations"]
+
     model.train()
     for it in range(iterations):
         input_batch, target = get_input_target_pairs(
-            train_dataset if split == "train" else valid_dataset,
+            train_dataset,
             batch_size,
             ctx_len,
             device_str=str(device),
@@ -110,16 +110,33 @@ def train(
 
         optim.zero_grad()
 
-        loss = cross_entropy(model(input_batch), target)
+        train_loss = cross_entropy(model(input_batch), target)
 
-        print(f"LOSS it={it} -> ", loss.to(device).item())
+        print(f"[TRAIN] LOSS it={it} -> ", train_loss.to(device).item())
+        wandb_run.log({"train loss": train_loss})
 
-        wandb_run.log({"loss": loss})
-
-        loss.backward()
+        train_loss.backward()
         optim.step()
 
+        if it % 10 == 0:
+            model.eval()
+            with torch.no_grad():
+                input_batch, target = get_input_target_pairs(
+                    valid_dataset,
+                    batch_size,
+                    ctx_len,
+                    device_str=str(device),
+                )
+
+                valid_loss = cross_entropy(model(input_batch), target)
+
+                print("-------------------------")
+                print(f"[VALID] LOSS it={it} -> ", valid_loss.item())
+                print("-------------------------")
+                wandb_run.log({"valid loss": valid_loss})
+
         save_checkpoint(model=model, optimizer=optim, iteration=it, out=Path(checkpoint_dst) / f"iteration-{it}")
+        model.train()
 
     wandb_run.finish()
 
