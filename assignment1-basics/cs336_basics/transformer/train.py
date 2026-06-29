@@ -14,19 +14,23 @@ from cs336_basics.transformer.ops import cross_entropy
 from cs336_basics.transformer.optim import AdamW
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DATA_DIR = REPO_ROOT / "cs336_basics" / "data"
+OUTPUTS_DIR = REPO_ROOT / "outputs"
+CONFIGS_DIR = REPO_ROOT / "cs336_basics" / "transformer" / "configs"
+
+
 def create_dataset_from_txt():
     bpe_tknzr = Tokenizer.from_files(
-        vocab_filepath="/Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/outputs/output_train_vocab_tinystories.pkl",
-        merges_filepath="/Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/outputs/output_train_merges_tinystories.pkl",
+        vocab_filepath=str(OUTPUTS_DIR / "output_train_vocab_tinystories.pkl"),
+        merges_filepath=str(OUTPUTS_DIR / "output_train_merges_tinystories.pkl"),
         special_tokens=["<|endoftext|>"],
     )
     train_text = ""
-    with open(
-        "/Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/data/TinyStoriesV2-GPT4-train.txt"
-    ) as f:
+    with open(DATA_DIR / "TinyStoriesV2-GPT4-train.txt") as f:
         train_text = f.read()
     tokens = bpe_tknzr.encode(train_text[:10000])
-    dataset_dst = "/Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/data/smoke-dataset-train.npy"
+    dataset_dst = DATA_DIR / "smoke-dataset-train.npy"
     np.save(dataset_dst, tokens)
 
     return dataset_dst
@@ -118,7 +122,7 @@ if __name__ == "__main__":
     train(
         train_dataset_src=dataset_src,
         valid_dataset_src=dataset_src,
-        checkpoint_dst="/Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/outputs/",
-        training_config_src="/Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/transformer/configs/training_config.json",
-        model_config_src="/Users/ubreglia/Desktop/lmfromscratch/assignment1-basics/cs336_basics/transformer/configs/model_config.json",
+        checkpoint_dst=OUTPUTS_DIR,
+        training_config_src=CONFIGS_DIR / "training_config.json",
+        model_config_src=CONFIGS_DIR / "model_config.json",
     )
