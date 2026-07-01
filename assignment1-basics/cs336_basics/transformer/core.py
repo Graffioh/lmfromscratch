@@ -1,9 +1,11 @@
 import json
 import os
+import sys
 from pathlib import Path
 
 import numpy as np
 import torch
+from tqdm import tqdm
 
 import wandb
 from cs336_basics.bpe_tokenizer.tokenizer import Tokenizer
@@ -48,7 +50,6 @@ def train(
     checkpoint_dst: str | os.PathLike[str],
     training_config_src: str | os.PathLike[str],
     model_config_src: str | os.PathLike[str],
-    iterations: int = 18,
     device: torch.device | None = None,
 ):
     # for debugging
@@ -98,7 +99,7 @@ def train(
     iterations = training_config["iterations"]
 
     model.train()
-    for it in range(iterations):
+    for it in tqdm(range(iterations)):
         input_batch, target = get_input_target_pairs(
             train_dataset,
             batch_size,
@@ -110,30 +111,45 @@ def train(
 
         train_loss = cross_entropy(model(input_batch), target)
 
-        print(f"[TRAIN] LOSS it={it} -> ", train_loss.to(device).item())
-        wandb_run.log({"train loss": train_loss})
-
         train_loss.backward()
         optim.step()
 
-        if it % 10 == 0:
+        wandb_run.log(
+            {
+                "loss/train": train_loss.float(),
+            },
+            step=it,
+        )
+
+        validation_batch = training_config["validation_batch"]
+        eval_interval = training_config["eval_interval"]
+        if it % eval_interval == 0:
             model.eval()
             with torch.no_grad():
-                input_batch, target = get_input_target_pairs(
-                    valid_dataset,
-                    batch_size,
-                    ctx_len,
-                    device_str=str(device),
+                valid_losses = []
+                for _ in range(validation_batch):
+                    input_batch, target = get_input_target_pairs(
+                        valid_dataset,
+                        batch_size,
+                        ctx_len,
+                        device_str=str(device),
+                    )
+
+                    cur_valid_loss = cross_entropy(model(input_batch), target)
+
+                    valid_losses.append(cur_valid_loss.float())
+
+                wandb_run.log(
+                    {
+                        "loss/valid": sum(valid_losses) / validation_batch,
+                    },
+                    step=it,
                 )
 
-                valid_loss = cross_entropy(model(input_batch), target)
+            save_checkpoint(
+                model=model, optimizer=optim, iteration=it, out=Path(checkpoint_dst) / f"ckp-iteration-{it}"
+            )
 
-                print("-------------------------")
-                print(f"[VALID] LOSS it={it} -> ", valid_loss.item())
-                print("-------------------------")
-                wandb_run.log({"valid loss": valid_loss})
-
-        save_checkpoint(model=model, optimizer=optim, iteration=it, out=Path(checkpoint_dst) / f"iteration-{it}")
         model.train()
 
     wandb_run.finish()
@@ -227,18 +243,21 @@ def generate(
 
 # throwaway
 if __name__ == "__main__":
-    # dataset_src = create_dataset_from_file_txt()
-    # train(
-    #     train_dataset_src=dataset_src,
-    #     valid_dataset_src=dataset_src,
-    #     checkpoint_dst=OUTPUTS_DIR,
-    #     training_config_src=CONFIGS_DIR / "training_config.json",
-    #     model_config_src=CONFIGS_DIR / "model_config.json",
-    # )
+    train_or_decode = sys.argv[1] if len(sys.argv) > 1 else "generate"
 
-    generate(
-        "Hello ",
-        2,
-        model_config_src=CONFIGS_DIR / "model_config.json",
-        checkpoint_src=OUTPUTS_DIR / "iteration-35",
-    )
+    if train_or_decode == "train":
+        dataset_src = create_dataset_from_file_txt()
+        train(
+            train_dataset_src=dataset_src,
+            valid_dataset_src=dataset_src,
+            checkpoint_dst=OUTPUTS_DIR,
+            training_config_src=CONFIGS_DIR / "training_config.json",
+            model_config_src=CONFIGS_DIR / "model_config.json",
+        )
+    else:
+        generate(
+            "Hello ",
+            10,
+            model_config_src=CONFIGS_DIR / "model_config.json",
+            checkpoint_src=OUTPUTS_DIR / "iteration-35",
+        )
