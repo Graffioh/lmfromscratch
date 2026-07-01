@@ -19,6 +19,24 @@ uv run <python_file_path>
 ```
 and the environment will be automatically solved and activated when necessary.
 
+### Remote GPU sync
+
+For a simple open-source remote GPU workflow, sync the working tree with `rsync`
+and recreate the Python environment from `uv.lock` on the GPU:
+
+```sh
+bash scripts/remote_sync.sh root@YOUR_GPU /workspace/assignment1-basics --setup
+```
+
+To sync and immediately start the training entrypoint:
+
+```sh
+bash scripts/remote_sync.sh root@YOUR_GPU /workspace/assignment1-basics --train
+```
+
+The sync intentionally excludes `.git/`, `.venv/`, generated data, and `outputs/`;
+the remote setup script downloads/regenerates what it needs.
+
 ### Run unit tests
 
 
@@ -47,4 +65,3 @@ gunzip owt_valid.txt.gz
 
 cd ..
 ```
-

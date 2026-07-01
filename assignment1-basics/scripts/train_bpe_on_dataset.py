@@ -5,7 +5,7 @@ from pathlib import Path
 
 from cs336_basics.bpe_tokenizer.bpe_parallel import train_bpe
 
-project_root = Path(__file__).resolve().parent
+project_root = Path(__file__).resolve().parents[1]
 outputs_path = project_root / "outputs"
 
 

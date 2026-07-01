@@ -241,11 +241,15 @@ def generate(
     print(f"FINAL TEXT = {bpe_tknzr.decode(final_txt)}")
 
 
-# throwaway
 if __name__ == "__main__":
-    train_or_decode = sys.argv[1] if len(sys.argv) > 1 else "generate"
+    if len(sys.argv) < 2 or sys.argv[1] not in {"train", "--train", "decode", "--decode"}:
+        print('Usage: uv run python cs336_basics/transformer/core.py --train')
+        print('   or: uv run python cs336_basics/transformer/core.py --decode "prompt text"')
+        raise SystemExit(2)
 
-    if train_or_decode == "train":
+    train_or_decode = sys.argv[1]
+
+    if train_or_decode in {"train", "--train"}:
         dataset_src = create_dataset_from_file_txt()
         train(
             train_dataset_src=dataset_src,
@@ -255,9 +259,14 @@ if __name__ == "__main__":
             model_config_src=CONFIGS_DIR / "model_config.json",
         )
     else:
+        if len(sys.argv) < 3:
+            print('Usage: uv run python cs336_basics/transformer/core.py --decode "prompt text"')
+            raise SystemExit(2)
+
+        prompt = " ".join(sys.argv[2:])
         generate(
-            "Hello ",
-            10,
+            prompt,
+            max_tokens=10,
             model_config_src=CONFIGS_DIR / "model_config.json",
             checkpoint_src=OUTPUTS_DIR / "iteration-35",
         )
