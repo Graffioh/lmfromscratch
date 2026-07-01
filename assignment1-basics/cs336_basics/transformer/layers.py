@@ -189,6 +189,8 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         seq_len = x.shape[-2]
+        self.token_positions = torch.arange(seq_len)
+
         mask = torch.tril(torch.ones((seq_len, seq_len), dtype=torch.bool)).to(x.device)
         d_k = d_q = d_v = self.Wk.shape[-2] // self.h
 

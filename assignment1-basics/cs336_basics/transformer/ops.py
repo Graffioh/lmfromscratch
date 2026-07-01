@@ -5,9 +5,12 @@ import einops
 import torch
 
 
-def softmax(x: torch.Tensor, dim: int) -> torch.Tensor:
+def softmax(x: torch.Tensor, dim: int, temperature: float | None = None) -> torch.Tensor:
     max_x = torch.max(x, dim=dim, keepdim=True)
-    return torch.exp(x - max_x[0]) / torch.sum(torch.exp(x - max_x[0]), dim=dim, keepdim=True)
+    adjusted_x = x - max_x[0]
+    if temperature:
+        adjusted_x /= temperature
+    return torch.exp(adjusted_x) / torch.sum(torch.exp(adjusted_x), dim=dim, keepdim=True)
 
 
 # to simplify and stabilize cross entropy calculation
