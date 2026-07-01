@@ -1,6 +1,6 @@
+import argparse
 import json
 import os
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -241,15 +241,21 @@ def generate(
     print(f"FINAL TEXT = {bpe_tknzr.decode(final_txt)}")
 
 
+# cli args
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--train", action="store_true")
+    mode.add_argument("--decode", metavar="PROMPT")
+    parser.add_argument("--max-tokens", type=int, default=5)
+    parser.add_argument("--checkpoint", type=Path, default=OUTPUTS_DIR / "ckp-iteration-10")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or sys.argv[1] not in {"train", "--train", "decode", "--decode"}:
-        print('Usage: uv run python cs336_basics/transformer/core.py --train')
-        print('   or: uv run python cs336_basics/transformer/core.py --decode "prompt text"')
-        raise SystemExit(2)
+    args = parse_args()
 
-    train_or_decode = sys.argv[1]
-
-    if train_or_decode in {"train", "--train"}:
+    if args.train:
         dataset_src = create_dataset_from_file_txt()
         train(
             train_dataset_src=dataset_src,
@@ -259,14 +265,9 @@ if __name__ == "__main__":
             model_config_src=CONFIGS_DIR / "model_config.json",
         )
     else:
-        if len(sys.argv) < 3:
-            print('Usage: uv run python cs336_basics/transformer/core.py --decode "prompt text"')
-            raise SystemExit(2)
-
-        prompt = " ".join(sys.argv[2:])
         generate(
-            prompt,
-            max_tokens=10,
+            args.decode,
+            max_tokens=args.max_tokens,
             model_config_src=CONFIGS_DIR / "model_config.json",
-            checkpoint_src=OUTPUTS_DIR / "iteration-35",
+            checkpoint_src=args.checkpoint,
         )
