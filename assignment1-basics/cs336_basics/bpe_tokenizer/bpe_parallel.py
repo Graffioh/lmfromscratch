@@ -75,9 +75,8 @@ def pretokenize_worker_star(args: tuple[str, int, int, list[str]]) -> Counter[st
 def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: list[str]) -> Counter[str]:
     tmp_pretoken_freq_table: Counter[str] = Counter()
 
-    def update_freq_table_count_based_on_span(txt: str):
-        for word in txt:
-            tmp_pretoken_freq_table[word] += 1
+    def update_freq_table_count_based_on_span(span: str):
+        tmp_pretoken_freq_table[span] += 1
 
     with open(input_path, "rb") as f:
         _ = f.seek(start)
@@ -92,9 +91,10 @@ def pretokenize_worker(input_path: str, start: int, end: int, special_tokens: li
             for txt_matches in txt_splits_iterator:
                 txt_start = txt_matches.start()
                 txt_span = corpus_text_chunk[prev_end:txt_start]
-                prev_end = txt_matches.end()
+                for pt in pretokenize(txt_span):
+                    update_freq_table_count_based_on_span(pt)
 
-                update_freq_table_count_based_on_span(txt_span)
+                prev_end = txt_matches.end()
 
             final_txt_span = corpus_text_chunk[prev_end:]
             update_freq_table_count_based_on_span(final_txt_span)
