@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-N_PROC="${N_PROC:-$(nproc 2>/dev/null || echo 4)}"
 RUN_TRAINING=0
 SKIP_DOWNLOAD=0
 SKIP_TOKENIZER=0
-TRAIN_ENTRYPOINT="${TRAIN_ENTRYPOINT:-cs336_basics/transformer/core.py}"
+TRAIN_ENTRYPOINT="${TRAIN_ENTRYPOINT:-cs336_basics/transformer/runner.py}"
 
 usage() {
   cat <<'EOF'
@@ -62,7 +61,7 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 
-mkdir -p cs336_basics/data outputs
+mkdir -p cs336_basics/data outputs checkpoints
 
 if [[ ! -f cs336_basics/data/TinyStoriesV2-GPT4-train.txt && "${SKIP_DOWNLOAD}" == "0" ]]; then
   echo "Downloading TinyStories train split..."
@@ -86,16 +85,16 @@ fi
 echo "Syncing Python dependencies from uv.lock..."
 uv sync --frozen
 
-if [[ "${SKIP_TOKENIZER}" == "0" && \
-  (! -f outputs/output_train_vocab_tinystories.pkl || ! -f outputs/output_train_merges_tinystories.pkl) ]]; then
-  echo "Training TinyStories BPE tokenizer with ${N_PROC} process(es)..."
-  uv run python scripts/train_bpe_on_dataset.py tinystories train "${N_PROC}"
-fi
-
 if [[ ! -f "${TRAIN_ENTRYPOINT}" ]]; then
   echo "Training entrypoint not found: ${TRAIN_ENTRYPOINT}"
   echo "Pass --train-entrypoint PATH or set TRAIN_ENTRYPOINT if your training file lives elsewhere."
   exit 1
+fi
+
+if [[ "${SKIP_TOKENIZER}" == "0" && \
+  (! -f outputs/output_train_vocab_tinystories.pkl || ! -f outputs/output_train_merges_tinystories.pkl) ]]; then
+  echo "Training BPE tokenizer from cs336_basics/transformer/configs/bpe_config.json..."
+  uv run python "${TRAIN_ENTRYPOINT}" train-bpe train
 fi
 
 echo "Checking ${TRAIN_ENTRYPOINT} syntax..."
@@ -111,10 +110,10 @@ fi
 
 if [[ "${RUN_TRAINING}" == "1" ]]; then
   echo "Starting training..."
-  uv run python "${TRAIN_ENTRYPOINT}" --train
+  uv run python "${TRAIN_ENTRYPOINT}" train
 else
   echo "Setup complete. Start training with:"
-  echo "  uv run python ${TRAIN_ENTRYPOINT} --train"
+  echo "  uv run python ${TRAIN_ENTRYPOINT} train"
   echo "Or rerun this script with:"
   echo "  bash scripts/setup_gpu.sh --train"
 fi

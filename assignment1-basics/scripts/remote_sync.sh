@@ -3,6 +3,7 @@ set -euo pipefail
 
 RUN_SETUP=0
 RUN_TRAINING=0
+PULL_CHECKPOINTS=0
 DELETE=1
 DRY_RUN=0
 
@@ -11,12 +12,16 @@ usage() {
 Usage: bash scripts/remote_sync.sh [options] USER@HOST [REMOTE_DIR]
        bash scripts/remote_sync.sh [options] USER@HOST:/absolute/remote/dir
 
-Sync this repository to a remote GPU with rsync. Generated data, outputs, caches,
-the local virtualenv, and Git metadata are intentionally left on their own side.
+Sync this repository to a remote GPU with rsync. outputs/ is only for tokenizer
+vocab/merge artifacts and is synced to the GPU. checkpoints/ is only for model
+checkpoints and is never pushed to the GPU; use --pull-checkpoints to copy it
+back from the remote.
 
 Options:
   --setup       After syncing, run bash scripts/setup_gpu.sh on the remote.
   --train       After syncing, run bash scripts/setup_gpu.sh --train on the remote.
+  --pull-checkpoints
+                Copy remote checkpoints/ into local checkpoints/.
   --dry-run     Show what rsync would transfer.
   --no-delete   Do not delete stale remote files.
 EOF
@@ -32,6 +37,10 @@ while [[ $# -gt 0 ]]; do
   --train)
     RUN_SETUP=1
     RUN_TRAINING=1
+    shift
+    ;;
+  --pull-checkpoints)
+    PULL_CHECKPOINTS=1
     shift
     ;;
   --dry-run)
@@ -80,6 +89,32 @@ if ! command -v rsync >/dev/null 2>&1; then
   exit 1
 fi
 
+if [[ "${PULL_CHECKPOINTS}" == "1" ]]; then
+  if [[ "${RUN_SETUP}" == "1" || "${RUN_TRAINING}" == "1" ]]; then
+    echo "--pull-checkpoints cannot be combined with --setup or --train."
+    exit 2
+  fi
+
+  CHECKPOINT_RSYNC_ARGS=(
+    -az
+    --human-readable
+    --stats
+    --progress
+    --partial
+    --exclude='*vocab*'
+    --exclude='*merge*'
+  )
+
+  if [[ "${DRY_RUN}" == "1" ]]; then
+    CHECKPOINT_RSYNC_ARGS+=(--dry-run)
+  else
+    mkdir -p checkpoints
+  fi
+
+  rsync "${CHECKPOINT_RSYNC_ARGS[@]}" "${REMOTE}:${REMOTE_DIR%/}/checkpoints/" ./checkpoints/
+  exit 0
+fi
+
 RSYNC_ARGS=(
   -az
   --human-readable
@@ -92,7 +127,11 @@ RSYNC_ARGS=(
   --exclude='__pycache__/'
   --exclude='*.pyc'
   --exclude=/cs336_basics/data/
-  --exclude=/outputs/
+  --exclude=/checkpoints/
+  --include=/outputs/
+  --include='/outputs/*vocab*'
+  --include='/outputs/*merge*'
+  --exclude=/outputs/**
 )
 
 if [[ "${DELETE}" == "1" ]]; then

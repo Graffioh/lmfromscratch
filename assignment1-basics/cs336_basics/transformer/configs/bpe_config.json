@@ -1,0 +1,6 @@
+{
+  "dataset": "tinystories",
+  "n_proc": 4,
+  "vocab_size": 10000,
+  "special_tokens": ["<|endoftext|>"]
+}

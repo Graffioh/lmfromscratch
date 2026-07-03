@@ -1,6 +1,6 @@
-import argparse
 import json
 import os
+import pickle
 from pathlib import Path
 
 import numpy as np
@@ -8,6 +8,7 @@ import torch
 from tqdm import tqdm
 
 import wandb
+from cs336_basics.bpe_tokenizer.bpe_parallel import train_bpe as train_bpe_impl
 from cs336_basics.bpe_tokenizer.tokenizer import Tokenizer
 from cs336_basics.transformer.layers import TransformerLM
 from cs336_basics.transformer.loader import get_input_target_pairs, load_checkpoint, save_checkpoint
@@ -241,33 +242,25 @@ def generate(
     print(f"FINAL TEXT = {bpe_tknzr.decode(final_txt)}")
 
 
-# cli args
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--train", action="store_true")
-    mode.add_argument("--decode", metavar="PROMPT")
-    parser.add_argument("--max-tokens", type=int, default=5)
-    parser.add_argument("--checkpoint", type=Path, default=OUTPUTS_DIR / "ckp-iteration-10")
-    return parser.parse_args()
+def train_bpe(
+    dataset_path: str | os.PathLike[str],
+    vocab_size: int,
+    special_tokens: list[str],
+    n_proc_from_args: int,
+    chosen_dataset: str,
+):
+    vocab, merges = train_bpe_impl(dataset_path, vocab_size, special_tokens, n_proc_from_args)
 
+    print("******************************")
+    print(f"len(vocab)={len(vocab)} n_merges_done={len(merges)}")
+    print("******************************")
 
-if __name__ == "__main__":
-    args = parse_args()
+    OUTPUTS_DIR.mkdir(exist_ok=True)
 
-    if args.train:
-        dataset_src = create_dataset_from_file_txt()
-        train(
-            train_dataset_src=dataset_src,
-            valid_dataset_src=dataset_src,
-            checkpoint_dst=OUTPUTS_DIR,
-            training_config_src=CONFIGS_DIR / "training_config.json",
-            model_config_src=CONFIGS_DIR / "model_config.json",
-        )
-    else:
-        generate(
-            args.decode,
-            max_tokens=args.max_tokens,
-            model_config_src=CONFIGS_DIR / "model_config.json",
-            checkpoint_src=args.checkpoint,
-        )
+    output_train_vocab_path = OUTPUTS_DIR / f"output_train_vocab_{chosen_dataset}.pkl"
+    with open(output_train_vocab_path, "wb") as f:
+        pickle.dump(vocab, f)
+
+    output_train_merges_path = OUTPUTS_DIR / f"output_train_merges_{chosen_dataset}.pkl"
+    with open(output_train_merges_path, "wb") as f:
+        pickle.dump(merges, f)
