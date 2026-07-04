@@ -20,13 +20,13 @@ def run_train_command(_: argparse.Namespace) -> None:
     pretokens_cache = defaultdict()
     train_dataset_src = create_dataset_from_file_txt(split="train", pretokens_cache=pretokens_cache)
     valid_dataset_src = create_dataset_from_file_txt(split="valid", pretokens_cache=pretokens_cache)
-    # train(
-    #    train_dataset_src=train_dataset_src,
-    #    valid_dataset_src=valid_dataset_src,
-    #    checkpoint_dst=CHECKPOINTS_DIR,
-    #    training_config_src=CONFIGS_DIR / "training_config.json",
-    #    model_config_src=CONFIGS_DIR / "model_config.json",
-    # )
+    train(
+        train_dataset_src=train_dataset_src,
+        valid_dataset_src=valid_dataset_src,
+        checkpoint_dst=CHECKPOINTS_DIR,
+        training_config_src=CONFIGS_DIR / "training_config.json",
+        model_config_src=CONFIGS_DIR / "model_config.json",
+    )
 
 
 def run_decode_command(args: argparse.Namespace) -> None:
