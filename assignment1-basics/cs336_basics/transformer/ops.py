@@ -14,7 +14,7 @@ def softmax(x: torch.Tensor, dim: int, temperature: float | None = None) -> torc
 
 
 # to simplify and stabilize cross entropy calculation
-def log_softmax(x: torch.Tensor, dim: int) -> torch.Tensor:
+def neg_log_softmax(x: torch.Tensor, dim: int) -> torch.Tensor:
     max_x = torch.max(x, dim=dim, keepdim=True)
     # must do: add back the max
     # why? we want to keep the original value computation not an altered one
@@ -44,7 +44,7 @@ def attention(Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor, mask: torch.Ten
 
 
 def cross_entropy(o: torch.Tensor, x_idx: torch.Tensor) -> torch.Tensor:
-    neg_log_likelihood = log_softmax(o, dim=-1)
+    neg_log_likelihood = neg_log_softmax(o, dim=-1)
     losses = torch.gather(neg_log_likelihood, -1, x_idx.unsqueeze(-1))
     return torch.mean(losses)
 

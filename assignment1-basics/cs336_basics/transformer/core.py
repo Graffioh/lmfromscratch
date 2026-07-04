@@ -42,7 +42,7 @@ def create_dataset_from_file_txt(split: Literal["train"] | Literal["valid"]):
     ) as f:
         train_text = f.read()
     tokens = bpe_tknzr.encode(train_text[:10000])
-    dataset_dst = DATA_DIR / "ts-dataset.npy"
+    dataset_dst = DATA_DIR / f"ts-{split}-dataset.npy"
     np.save(dataset_dst, tokens)
 
     return dataset_dst
