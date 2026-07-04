@@ -164,7 +164,11 @@ cython_debug/
 
 cs336_basics/data/
 
-outputs/
+# ignore outputs/ except the canonical BPE tokenizer artifacts: the same
+# vocab/merges must be used everywhere or checkpoints decode as garbage
+outputs/*
+!outputs/output_train_vocab_tinystories.pkl
+!outputs/output_train_merges_tinystories.pkl
 checkpoints/
 
 .shapecheese*
