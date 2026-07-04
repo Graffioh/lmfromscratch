@@ -6,6 +6,7 @@ RUN_TRAINING=0
 PULL_CHECKPOINTS=0
 DELETE=1
 DRY_RUN=0
+SSH_KEY=""
 
 usage() {
   cat <<'EOF'
@@ -22,6 +23,8 @@ Options:
   --train       After syncing, run bash scripts/setup_gpu.sh --train on the remote.
   --pull-checkpoints
                 Copy remote checkpoints/ into local checkpoints/.
+  --ssh-key PATH
+                SSH private key to use for ssh and rsync.
   --dry-run     Show what rsync would transfer.
   --no-delete   Do not delete stale remote files.
 EOF
@@ -42,6 +45,15 @@ while [[ $# -gt 0 ]]; do
   --pull-checkpoints)
     PULL_CHECKPOINTS=1
     shift
+    ;;
+  --ssh-key)
+    if [[ $# -lt 2 ]]; then
+      echo "--ssh-key requires a path."
+      usage
+      exit 2
+    fi
+    SSH_KEY="$2"
+    shift 2
     ;;
   --dry-run)
     DRY_RUN=1
@@ -83,6 +95,13 @@ if [[ "${REMOTE}" == *:* && "${#POSITIONAL[@]}" == "1" ]]; then
 fi
 
 TARGET="${REMOTE}:${REMOTE_DIR%/}/"
+SSH_ARGS=()
+RSYNC_SSH_ARGS=()
+
+if [[ -n "${SSH_KEY}" ]]; then
+  SSH_ARGS+=(-i "${SSH_KEY}" -o IdentitiesOnly=yes)
+  RSYNC_SSH_ARGS=(-e "ssh -i ${SSH_KEY} -o IdentitiesOnly=yes")
+fi
 
 if ! command -v rsync >/dev/null 2>&1; then
   echo "rsync is not installed locally."
@@ -104,6 +123,10 @@ if [[ "${PULL_CHECKPOINTS}" == "1" ]]; then
     --exclude='*vocab*'
     --exclude='*merge*'
   )
+
+  if [[ "${#RSYNC_SSH_ARGS[@]}" -gt 0 ]]; then
+    CHECKPOINT_RSYNC_ARGS+=("${RSYNC_SSH_ARGS[@]}")
+  fi
 
   if [[ "${DRY_RUN}" == "1" ]]; then
     CHECKPOINT_RSYNC_ARGS+=(--dry-run)
@@ -138,11 +161,15 @@ if [[ "${DELETE}" == "1" ]]; then
   RSYNC_ARGS+=(--delete)
 fi
 
+if [[ "${#RSYNC_SSH_ARGS[@]}" -gt 0 ]]; then
+  RSYNC_ARGS+=("${RSYNC_SSH_ARGS[@]}")
+fi
+
 if [[ "${DRY_RUN}" == "1" ]]; then
   RSYNC_ARGS+=(--dry-run)
 else
   printf -v QUOTED_REMOTE_DIR '%q' "${REMOTE_DIR}"
-  ssh "${REMOTE}" "mkdir -p ${QUOTED_REMOTE_DIR}"
+  ssh "${SSH_ARGS[@]}" "${REMOTE}" "mkdir -p ${QUOTED_REMOTE_DIR}"
 fi
 
 rsync "${RSYNC_ARGS[@]}" ./ "${TARGET}"
@@ -158,5 +185,5 @@ if [[ "${RUN_SETUP}" == "1" ]]; then
   if [[ "${RUN_TRAINING}" == "1" ]]; then
     REMOTE_SETUP_CMD="${REMOTE_SETUP_CMD} --train"
   fi
-  ssh "${REMOTE}" "${REMOTE_SETUP_CMD}"
+  ssh "${SSH_ARGS[@]}" "${REMOTE}" "${REMOTE_SETUP_CMD}"
 fi

@@ -8,12 +8,19 @@ if [[ $# -ne 1 ]]; then
 fi
 
 IMAGE_TAG="$1"
+PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
+BUILDER="${DOCKER_BUILDER:-cs336-gpu-builder}"
 
 cd "$(dirname "$0")/.."
 
-docker build -f docker/Dockerfile.gpu -t "${IMAGE_TAG}" .
+if ! docker buildx inspect "${BUILDER}" >/dev/null 2>&1; then
+  docker buildx create --name "${BUILDER}" --driver docker-container --use >/dev/null
+else
+  docker buildx use "${BUILDER}"
+fi
+
+docker buildx inspect --bootstrap >/dev/null
+docker buildx build --platform "${PLATFORM}" -f docker/Dockerfile.gpu -t "${IMAGE_TAG}" --push .
 
 echo
-echo "Built ${IMAGE_TAG}"
-echo "Push it with:"
-echo "  docker push ${IMAGE_TAG}"
+echo "Built and pushed ${IMAGE_TAG} for ${PLATFORM} with builder ${BUILDER}"
