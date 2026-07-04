@@ -22,10 +22,17 @@ RUN apt-get update \
     ca-certificates \
     curl \
     git \
+    neovim \
     vim \
   && rm -rf /var/lib/apt/lists/*
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+RUN git clone --depth 1 https://github.com/Graffioh/dotfiles.git /tmp/dotfiles \
+  && test -d /tmp/dotfiles/nvim \
+  && mkdir -p /root/.config \
+  && cp -a /tmp/dotfiles/nvim /root/.config/nvim \
+  && rm -rf /tmp/dotfiles
 
 # Warm uv's global cache with everything uv.lock pins, so the first
 # `uv sync` inside the git clone copies from cache in seconds instead of
