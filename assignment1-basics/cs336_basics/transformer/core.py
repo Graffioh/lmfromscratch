@@ -65,7 +65,7 @@ def train(
     device: torch.device | None = None,
 ):
     # for debugging
-    torch.autograd.set_detect_anomaly(True, check_nan=False)
+    # torch.autograd.set_detect_anomaly(True, check_nan=False)
 
     if not device:
         device = get_default_device()
@@ -224,7 +224,7 @@ def generate(
 
     x_in = torch.tensor(prompt_tokens, dtype=torch.long, device=device).unsqueeze(0)
 
-    load_checkpoint(checkpoint_src, model)
+    load_checkpoint(checkpoint_src, model, device=str(device))
     model.eval()
 
     i = 0
