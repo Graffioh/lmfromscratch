@@ -15,7 +15,8 @@ elif [[ $# -gt 0 ]]; then
 fi
 
 TRAIN_ENTRYPOINT="cs336_basics/transformer/runner.py"
-DATASET="cs336_basics/data/TinyStoriesV2-GPT4-train.txt"
+TRAIN_DATASET="cs336_basics/data/TinyStoriesV2-GPT4-train.txt"
+VALID_DATASET="cs336_basics/data/TinyStoriesV2-GPT4-valid.txt"
 
 # Run from the repo root regardless of where the script was invoked from.
 cd "$(dirname "$0")/.."
@@ -30,10 +31,16 @@ mkdir -p cs336_basics/data outputs checkpoints
 
 # The dataset is neither in git nor in the docker image (~2GB), so fetch it
 # on first run.
-if [[ ! -f "${DATASET}" ]]; then
+if [[ ! -f "${TRAIN_DATASET}" ]]; then
   echo "Downloading TinyStories train split..."
-  curl -L -o "${DATASET}" \
+  curl -L -o "${TRAIN_DATASET}" \
     https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-train.txt
+fi
+
+if [[ ! -f "${VALID_DATASET}" ]]; then
+  echo "Downloading TinyStories validation split..."
+  curl -L -o "${VALID_DATASET}" \
+    https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-valid.txt
 fi
 
 # --frozen installs exactly what uv.lock pins and fails if the lockfile is
