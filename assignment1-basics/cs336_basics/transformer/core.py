@@ -2,6 +2,7 @@ import json
 import os
 import pickle
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import torch
@@ -29,17 +30,19 @@ def get_default_device() -> torch.device:
     return torch.device("cpu")
 
 
-def create_dataset_from_file_txt():
+def create_dataset_from_file_txt(split: Literal["train"] | Literal["valid"]):
     bpe_tknzr = Tokenizer.from_files(
         vocab_filepath=str(OUTPUTS_DIR / "output_train_vocab_tinystories.pkl"),
         merges_filepath=str(OUTPUTS_DIR / "output_train_merges_tinystories.pkl"),
         special_tokens=["<|endoftext|>"],
     )
     train_text = ""
-    with open(DATA_DIR / "TinyStoriesV2-GPT4-train.txt") as f:
+    with open(
+        DATA_DIR / "TinyStoriesV2-GPT4-train.txt" if split == "train" else DATA_DIR / "TinyStoriesV2-GPT4-valid.txt"
+    ) as f:
         train_text = f.read()
     tokens = bpe_tknzr.encode(train_text[:10000])
-    dataset_dst = DATA_DIR / "smoke-dataset-train.npy"
+    dataset_dst = DATA_DIR / "ts-dataset.npy"
     np.save(dataset_dst, tokens)
 
     return dataset_dst
@@ -122,13 +125,13 @@ def train(
             step=it,
         )
 
-        validation_batch = training_config["validation_batch"]
+        validation_batch_size = training_config["validation_batch_size"]
         eval_interval = training_config["eval_interval"]
         if it % eval_interval == 0:
             model.eval()
             with torch.no_grad():
                 valid_losses = []
-                for _ in range(validation_batch):
+                for _ in range(validation_batch_size):
                     input_batch, target = get_input_target_pairs(
                         valid_dataset,
                         batch_size,
@@ -142,7 +145,7 @@ def train(
 
                 wandb_run.log(
                     {
-                        "loss/valid": sum(valid_losses) / validation_batch,
+                        "loss/valid": sum(valid_losses) / validation_batch_size,
                     },
                     step=it,
                 )

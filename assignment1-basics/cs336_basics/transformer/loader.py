@@ -41,8 +41,9 @@ def load_checkpoint(
     src: str | os.PathLike | typing.BinaryIO | typing.IO[bytes],
     model: torch.nn.Module,
     optimizer: torch.optim.Optimizer | None = None,
+    device: str = "mps",
 ) -> int:
-    checkpoint = torch.load(src)
+    checkpoint = torch.load(src, map_location=torch.device(device))
     model.load_state_dict(checkpoint["model_state"])
     if optimizer:
         optimizer.load_state_dict(checkpoint["optim_state"])

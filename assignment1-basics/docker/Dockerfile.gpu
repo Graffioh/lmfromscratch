@@ -1,6 +1,7 @@
-# GPU training image: CUDA base + uv-managed Python env. Shell access goes
-# through the provider's SSH proxy or web terminal; code arrives on the pod
-# via git clone, checkpoints leave via HF Hub (see docs/remote-gpu.md).
+# GPU training image: environment only, no code. CUDA base + uv + pre-warmed
+# package cache; the repo is cloned on the pod (see docs/remote-gpu.md).
+# Shell access goes through the provider's SSH proxy or web terminal;
+# checkpoints leave via HF Hub.
 FROM nvidia/cuda:13.0.2-devel-ubuntu24.04
 
 # Build-time only (ARG, not ENV): stop apt from prompting during the build.
@@ -25,23 +26,17 @@ RUN apt-get update \
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-WORKDIR /app/assignment1-basics
+# Warm uv's global cache with everything uv.lock pins, so the first
+# `uv sync` inside the git clone copies from cache in seconds instead of
+# re-downloading multi-GB wheels. The warmup venv itself is discarded in the
+# same layer; the clone creates its own.
+COPY pyproject.toml uv.lock /opt/deps-warmup/
+RUN cd /opt/deps-warmup \
+  && uv sync --frozen --no-install-project \
+  && rm -rf /opt/deps-warmup/.venv
 
-# Dependency layer: only re-runs when the lockfile changes.
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project
-
-# Code layers: change often, but rebuilding them is cheap since deps are cached above.
-# The baked-in copy mainly pre-warms the env; the git clone on the pod is the
-# source of truth at runtime.
-COPY README.md ./
-COPY cs336_basics ./cs336_basics
-COPY scripts ./scripts
-COPY tests ./tests
-COPY outputs ./outputs
-
-RUN mkdir -p checkpoints cs336_basics/data \
-  && uv sync --frozen
+# Land new shells on the persistent volume, where the clone lives.
+WORKDIR /workspace
 
 # A container only lives as long as its CMD; sleep keeps the pod up so the
 # provider's terminal can attach.

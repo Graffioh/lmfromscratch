@@ -17,10 +17,11 @@ CHECKPOINTS_DIR = REPO_ROOT / "checkpoints"
 
 
 def run_train_command(_: argparse.Namespace) -> None:
-    dataset_src = create_dataset_from_file_txt()
+    train_dataset_src = create_dataset_from_file_txt(split="train")
+    valid_dataset_src = create_dataset_from_file_txt(split="valid")
     train(
-        train_dataset_src=dataset_src,
-        valid_dataset_src=dataset_src,
+        train_dataset_src=train_dataset_src,
+        valid_dataset_src=valid_dataset_src,
         checkpoint_dst=CHECKPOINTS_DIR,
         training_config_src=CONFIGS_DIR / "training_config.json",
         model_config_src=CONFIGS_DIR / "model_config.json",
@@ -71,7 +72,7 @@ def parse_args() -> argparse.Namespace:
     decode_parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=CHECKPOINTS_DIR / "ckp-iteration-10",
+        default=CHECKPOINTS_DIR / "ckp-iteration-90",
         help="Checkpoint file to load.",
     )
     decode_parser.set_defaults(func=run_decode_command)
