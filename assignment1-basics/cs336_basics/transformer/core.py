@@ -31,6 +31,11 @@ def get_default_device() -> torch.device:
 
 
 def create_dataset_from_file_txt(split: Literal["train"] | Literal["valid"]):
+    dataset_dst = DATA_DIR / f"ts-{split}-dataset.npy"
+    if dataset_dst.is_file():
+        print(f"{split} dataset already exists, skipping dataset creation.")
+        return dataset_dst
+
     bpe_tknzr = Tokenizer.from_files(
         vocab_filepath=str(OUTPUTS_DIR / "output_train_vocab_tinystories.pkl"),
         merges_filepath=str(OUTPUTS_DIR / "output_train_merges_tinystories.pkl"),
@@ -42,7 +47,6 @@ def create_dataset_from_file_txt(split: Literal["train"] | Literal["valid"]):
     ) as f:
         dataset_text = f.read()
     tokens = bpe_tknzr.encode(dataset_text)
-    dataset_dst = DATA_DIR / f"ts-{split}-dataset.npy"
     np.save(dataset_dst, tokens)
 
     return dataset_dst

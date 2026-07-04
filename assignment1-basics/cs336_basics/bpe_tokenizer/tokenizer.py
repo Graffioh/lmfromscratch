@@ -31,8 +31,14 @@ class Tokenizer:
 
         return cls(vocab, merges, special_tokens)
 
-    def encode(self, text: str) -> list[int]:
+    def encode(self, text: str, pretokens_cache: dict[bytes, tuple[int, ...]] | None = None) -> list[int]:
+        # build inverse vocab
+        if len(self.inverse_vocab) == 0:
+            for n, b in self.vocab.items():
+                self.inverse_vocab[b] = n
+
         txt_split = [text]
+
         if self.special_tokens and len(self.special_tokens) != 0:
             # split in chunks based on special tokens
             delimited_special_tokens = "|".join(regex.escape(st) for st in self.special_tokens)
@@ -41,23 +47,22 @@ class Tokenizer:
 
         token_ids: list[int] = []
         for txt_chunk in txt_split:
-            pretokens: list[tuple[bytes, ...]] = []
             if self.special_tokens and txt_chunk in self.special_tokens:
                 token_ids.append(self.inverse_vocab[txt_chunk.encode("utf-8")])
             else:
                 # gather pretokens
                 for pretoken in pretokenize(txt_chunk):
                     pretoken_bytes: bytes = pretoken.encode("utf-8")
-                    pretoken_tuples: list[bytes] = []
+                    if pretokens_cache is not None and pretoken_bytes in pretokens_cache:
+                        token_ids.extend(pretokens_cache[pretoken_bytes])
+                        continue
 
+                    p: list[bytes] = []
                     for pb in pretoken_bytes:
-                        pretoken_tuples.append(bytes([pb]))
+                        p.append(bytes([pb]))
 
-                    pretokens.append(tuple(pretoken_tuples))
-
-                # apply the pair of ordered merges to the pretokens
-                for b1, b2 in self.merges:
-                    for pos, p in enumerate(pretokens):
+                    # apply the pair of ordered merges to the pretokens
+                    for b1, b2 in self.merges:
                         i = 0
                         new_token: list[bytes] = []
                         while i < len(p):
@@ -67,16 +72,12 @@ class Tokenizer:
                             else:
                                 new_token.append(p[i])
                                 i += 1
-                        pretokens[pos] = tuple(new_token)
+                        p = new_token
 
-                # build token ids from the pretokens tuples and indexing in inverse vocab
-                if len(self.inverse_vocab) == 0:
-                    for n, b in self.vocab.items():
-                        self.inverse_vocab[b] = n
-
-                for pretokens_tuple in pretokens:
-                    for b_t in pretokens_tuple:
-                        token_ids.append(self.inverse_vocab[b_t])
+                    ids_for_this_pretoken = [self.inverse_vocab[b_t] for b_t in p]
+                    if pretokens_cache is not None:
+                        pretokens_cache[pretoken_bytes] = tuple(ids_for_this_pretoken)
+                    token_ids.extend(ids_for_this_pretoken)
 
         return token_ids
 
@@ -89,7 +90,7 @@ class Tokenizer:
         bytes_list: list[bytes] = []
         for id in ids:
             if id not in self.vocab:
-                bytes_list.append("�".encode("utf-8"))
+                bytes_list.append("�".encode())
             else:
                 bytes_list.append(self.vocab[id])
 
