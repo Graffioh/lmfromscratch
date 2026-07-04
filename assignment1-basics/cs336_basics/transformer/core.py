@@ -36,12 +36,12 @@ def create_dataset_from_file_txt(split: Literal["train"] | Literal["valid"]):
         merges_filepath=str(OUTPUTS_DIR / "output_train_merges_tinystories.pkl"),
         special_tokens=["<|endoftext|>"],
     )
-    train_text = ""
+    dataset_text = ""
     with open(
         DATA_DIR / "TinyStoriesV2-GPT4-train.txt" if split == "train" else DATA_DIR / "TinyStoriesV2-GPT4-valid.txt"
     ) as f:
-        train_text = f.read()
-    tokens = bpe_tknzr.encode(train_text[:10000])
+        dataset_text = f.read()
+    tokens = bpe_tknzr.encode(dataset_text)
     dataset_dst = DATA_DIR / f"ts-{split}-dataset.npy"
     np.save(dataset_dst, tokens)
 
