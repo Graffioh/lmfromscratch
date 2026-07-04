@@ -8,6 +8,7 @@ from cs336_basics.transformer.core import (
     DATA_DIR,
     create_dataset_from_file_txt,
     generate,
+    train,
     train_bpe,
 )
 
