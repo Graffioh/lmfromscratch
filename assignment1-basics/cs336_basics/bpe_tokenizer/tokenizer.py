@@ -3,6 +3,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Iterator
 
 import regex
+from tqdm import tqdm
 
 from .bpe_parallel import pretokenize
 
@@ -31,7 +32,8 @@ class Tokenizer:
 
         return cls(vocab, merges, special_tokens)
 
-    def encode(self, text: str, pretokens_cache: dict[bytes, tuple[int, ...]] | None = None) -> list[int]:
+    def encode(self, text: str, pretokens_cache: defaultdict[bytes, tuple[int, ...]] | None = None) -> list[int]:
+        print("Encoding dataset text...")
         # build inverse vocab
         if len(self.inverse_vocab) == 0:
             for n, b in self.vocab.items():
@@ -46,7 +48,7 @@ class Tokenizer:
             txt_split = regex.split(capturing_group_pattern, text)
 
         token_ids: list[int] = []
-        for txt_chunk in txt_split:
+        for txt_chunk in tqdm(txt_split):
             if self.special_tokens and txt_chunk in self.special_tokens:
                 token_ids.append(self.inverse_vocab[txt_chunk.encode("utf-8")])
             else:

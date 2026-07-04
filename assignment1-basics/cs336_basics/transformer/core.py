@@ -1,6 +1,7 @@
 import json
 import os
 import pickle
+from collections import defaultdict
 from pathlib import Path
 from typing import Literal
 
@@ -30,7 +31,9 @@ def get_default_device() -> torch.device:
     return torch.device("cpu")
 
 
-def create_dataset_from_file_txt(split: Literal["train"] | Literal["valid"]):
+def create_dataset_from_file_txt(
+    split: Literal["train"] | Literal["valid"], pretokens_cache: defaultdict[bytes, tuple[int, ...]] | None = None
+):
     dataset_dst = DATA_DIR / f"ts-{split}-dataset.npy"
     if dataset_dst.is_file():
         print(f"{split} dataset already exists, skipping dataset creation.")
@@ -46,7 +49,8 @@ def create_dataset_from_file_txt(split: Literal["train"] | Literal["valid"]):
         DATA_DIR / "TinyStoriesV2-GPT4-train.txt" if split == "train" else DATA_DIR / "TinyStoriesV2-GPT4-valid.txt"
     ) as f:
         dataset_text = f.read()
-    tokens = bpe_tknzr.encode(dataset_text)
+
+    tokens = bpe_tknzr.encode(dataset_text, pretokens_cache=pretokens_cache)
     np.save(dataset_dst, tokens)
 
     return dataset_dst
