@@ -42,6 +42,13 @@ RUN curl -fL "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
+# Prime's SSH/web shell can start as a login shell with a reset PATH, so keep
+# uv available there as well as through Docker's ENV above.
+RUN printf '%s\n' 'export PATH="/root/.local/bin:$PATH"' \
+    >> /root/.bashrc \
+  && printf '%s\n' 'export PATH="/root/.local/bin:$PATH"' \
+    >> /root/.profile
+
 RUN git clone --depth 1 https://github.com/Graffioh/dotfiles.git /tmp/dotfiles \
   && test -d /tmp/dotfiles/nvim \
   && mkdir -p /root/.config \
