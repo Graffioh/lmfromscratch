@@ -6,6 +6,7 @@ FROM nvidia/cuda:13.0.2-devel-ubuntu24.04
 
 # Build-time only (ARG, not ENV): stop apt from prompting during the build.
 ARG DEBIAN_FRONTEND=noninteractive
+ARG NVIM_VERSION=0.11.3
 
 # PYTHONUNBUFFERED: flush prints immediately so training logs stream live.
 # UV_PYTHON: uv provisions its own CPython, no system python needed.
@@ -22,9 +23,22 @@ RUN apt-get update \
     ca-certificates \
     curl \
     git \
-    neovim \
+    openssh-server \
     vim \
   && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /run/sshd /root/.ssh \
+  && chmod 700 /root/.ssh \
+  && sed -i '/^#\?PermitRootLogin /d; /^#\?PasswordAuthentication /d; /^#\?PubkeyAuthentication /d' /etc/ssh/sshd_config \
+  && printf '%s\n' 'PermitRootLogin prohibit-password' 'PasswordAuthentication no' 'PubkeyAuthentication yes' >> /etc/ssh/sshd_config \
+  && sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd \
+  && ssh-keygen -A
+
+RUN curl -fL "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION}/nvim-linux-x86_64.tar.gz" -o /tmp/nvim.tar.gz \
+  && mkdir -p /opt/nvim \
+  && tar -xzf /tmp/nvim.tar.gz --strip-components=1 -C /opt/nvim \
+  && ln -s /opt/nvim/bin/nvim /usr/local/bin/nvim \
+  && rm /tmp/nvim.tar.gz
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
@@ -45,7 +59,3 @@ RUN cd /opt/deps-warmup \
 
 # Land new shells on the persistent volume, where the clone lives.
 WORKDIR /workspace
-
-# A container only lives as long as its CMD; sleep keeps the pod up so the
-# provider's terminal can attach.
-CMD ["sleep", "infinity"]
