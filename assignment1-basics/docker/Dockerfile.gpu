@@ -42,8 +42,13 @@ RUN curl -fL "https://github.com/neovim/neovim/releases/download/v${NVIM_VERSION
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
+# Install Hugging Face's standalone CLI (`hf`) for auth, upload, and download
+# commands before the project venv exists. The project also pins
+# huggingface-hub in uv.lock, so `uv run hf ...` remains available later.
+RUN curl -LsSf https://hf.co/cli/install.sh | bash
+
 # Prime's SSH/web shell can start as a login shell with a reset PATH, so keep
-# uv available there as well as through Docker's ENV above.
+# uv and hf available there as well as through Docker's ENV above.
 RUN printf '%s\n' 'export PATH="/root/.local/bin:$PATH"' \
     >> /root/.bashrc \
   && printf '%s\n' 'export PATH="/root/.local/bin:$PATH"' \

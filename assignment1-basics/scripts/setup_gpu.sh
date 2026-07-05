@@ -17,6 +17,9 @@ fi
 TRAIN_ENTRYPOINT="cs336_basics/transformer/runner.py"
 TRAIN_DATASET="cs336_basics/data/TinyStoriesV2-GPT4-train.txt"
 VALID_DATASET="cs336_basics/data/TinyStoriesV2-GPT4-valid.txt"
+TRAIN_TOKEN_DATASET="cs336_basics/data/ts-train-dataset.npy"
+VALID_TOKEN_DATASET="cs336_basics/data/ts-valid-dataset.npy"
+HF_CHECKPOINT_REPO="Graffioh/lmfromscratch-checkpoints"
 
 # Run from the repo root regardless of where the script was invoked from.
 cd "$(dirname "$0")/.."
@@ -29,15 +32,47 @@ fi
 
 mkdir -p cs336_basics/data outputs checkpoints
 
-# The dataset is neither in git nor in the docker image (~2GB), so fetch it
-# on first run.
-if [[ ! -f "${TRAIN_DATASET}" ]]; then
+if [[ -n "${HF_TOKEN:-}" ]] && command -v hf >/dev/null 2>&1; then
+  echo "Logging in to Hugging Face from HF_TOKEN..."
+  hf auth login --token "${HF_TOKEN}" --add-to-git-credential
+elif [[ -n "${HF_TOKEN:-}" ]]; then
+  echo "HF_TOKEN is set, but the Hugging Face CLI ('hf') is not on PATH."
+  echo "Hugging Face libraries will still read HF_TOKEN directly."
+fi
+
+if [[ ! -f "${TRAIN_TOKEN_DATASET}" || ! -f "${VALID_TOKEN_DATASET}" ]]; then
+  if command -v hf >/dev/null 2>&1; then
+    echo "Downloading pre-tokenized datasets from Hugging Face..."
+    if hf download "${HF_CHECKPOINT_REPO}" \
+      ts-train-dataset.npy \
+      ts-valid-dataset.npy \
+      --local-dir cs336_basics/data; then
+      echo "Pre-tokenized datasets are ready."
+    else
+      echo "Could not download pre-tokenized datasets; will create them locally."
+    fi
+  else
+    echo "Hugging Face CLI ('hf') is not on PATH; will create tokenized datasets locally."
+  fi
+fi
+
+# The raw text is neither in git nor in the docker image (~2GB). It is only
+# needed when pre-tokenized arrays are unavailable or BPE artifacts must be
+# regenerated.
+NEEDS_RAW_TEXT=0
+if [[ ! -f "${TRAIN_TOKEN_DATASET}" || ! -f "${VALID_TOKEN_DATASET}" ]]; then
+  NEEDS_RAW_TEXT=1
+elif [[ ! -f outputs/output_train_vocab_tinystories.pkl || ! -f outputs/output_train_merges_tinystories.pkl ]]; then
+  NEEDS_RAW_TEXT=1
+fi
+
+if [[ "${NEEDS_RAW_TEXT}" == "1" && ! -f "${TRAIN_DATASET}" ]]; then
   echo "Downloading TinyStories train split..."
   curl -L -o "${TRAIN_DATASET}" \
     https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-train.txt
 fi
 
-if [[ ! -f "${VALID_DATASET}" ]]; then
+if [[ "${NEEDS_RAW_TEXT}" == "1" && ! -f "${VALID_DATASET}" ]]; then
   echo "Downloading TinyStories validation split..."
   curl -L -o "${VALID_DATASET}" \
     https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-valid.txt
