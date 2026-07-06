@@ -32,27 +32,27 @@ fi
 
 mkdir -p cs336_basics/data outputs checkpoints
 
-if [[ -n "${HF_TOKEN:-}" ]] && command -v hf >/dev/null 2>&1; then
+# --frozen installs exactly what uv.lock pins and fails if the lockfile is
+# stale, so the remote env cannot silently drift from the local one.
+echo "Syncing Python dependencies from uv.lock..."
+uv sync --frozen
+
+if [[ -n "${HF_TOKEN:-}" ]]; then
   echo "Logging in to Hugging Face from HF_TOKEN..."
-  hf auth login --token "${HF_TOKEN}" --add-to-git-credential
-elif [[ -n "${HF_TOKEN:-}" ]]; then
-  echo "HF_TOKEN is set, but the Hugging Face CLI ('hf') is not on PATH."
-  echo "Hugging Face libraries will still read HF_TOKEN directly."
+  if ! uv run hf auth login --token "${HF_TOKEN}" --add-to-git-credential; then
+    echo "Could not log in with uv run hf; Hugging Face libraries will still read HF_TOKEN directly."
+  fi
 fi
 
 if [[ ! -f "${TRAIN_TOKEN_DATASET}" || ! -f "${VALID_TOKEN_DATASET}" ]]; then
-  if command -v hf >/dev/null 2>&1; then
-    echo "Downloading pre-tokenized datasets from Hugging Face..."
-    if hf download "${HF_CHECKPOINT_REPO}" \
-      ts-train-dataset.npy \
-      ts-valid-dataset.npy \
-      --local-dir cs336_basics/data; then
-      echo "Pre-tokenized datasets are ready."
-    else
-      echo "Could not download pre-tokenized datasets; will create them locally."
-    fi
+  echo "Downloading pre-tokenized datasets from Hugging Face..."
+  if uv run hf download "${HF_CHECKPOINT_REPO}" \
+    ts-train-dataset.npy \
+    ts-valid-dataset.npy \
+    --local-dir cs336_basics/data; then
+    echo "Pre-tokenized datasets are ready."
   else
-    echo "Hugging Face CLI ('hf') is not on PATH; will create tokenized datasets locally."
+    echo "Could not download pre-tokenized datasets with uv run hf; will create them locally."
   fi
 fi
 
@@ -77,11 +77,6 @@ if [[ "${NEEDS_RAW_TEXT}" == "1" && ! -f "${VALID_DATASET}" ]]; then
   curl -L -o "${VALID_DATASET}" \
     https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-valid.txt
 fi
-
-# --frozen installs exactly what uv.lock pins and fails if the lockfile is
-# stale, so the remote env cannot silently drift from the local one.
-echo "Syncing Python dependencies from uv.lock..."
-uv sync --frozen
 
 # The canonical BPE artifacts are committed in outputs/, so this normally
 # never runs; it is only a fallback if they are deleted.

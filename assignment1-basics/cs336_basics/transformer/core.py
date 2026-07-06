@@ -14,7 +14,7 @@ from cs336_basics.bpe_tokenizer.bpe_parallel import train_bpe as train_bpe_impl
 from cs336_basics.bpe_tokenizer.tokenizer import Tokenizer
 from cs336_basics.transformer.layers import TransformerLM
 from cs336_basics.transformer.loader import get_input_target_pairs, load_checkpoint, save_checkpoint
-from cs336_basics.transformer.ops import cross_entropy, softmax
+from cs336_basics.transformer.ops import cross_entropy, learning_rate_schedule, softmax
 from cs336_basics.transformer.optim import AdamW
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -92,9 +92,10 @@ def train(
         num_layers=model_config["num_layers"],
     ).to(device)
 
+    lr_base = training_config["lr"]
     optim = AdamW(
         model.parameters(),
-        lr=training_config["lr"],
+        lr=lr_base,
         weight_decay=training_config["weight_decay"],
         betas=(training_config["beta1"], training_config["beta2"]),
         eps=training_config["eps"],
@@ -124,6 +125,11 @@ def train(
         train_loss = cross_entropy(model(input_batch), target)
 
         train_loss.backward()
+
+        lr_t = learning_rate_schedule(it, lr_base, lr_base * 0.01, int(iterations * 0.1), iterations)
+        for pg in optim.param_groups:
+            pg["lr"] = lr_t
+
         optim.step()
 
         wandb_run.log(

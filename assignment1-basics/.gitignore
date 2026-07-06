@@ -121,6 +121,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.*
 .venv
 env/
 venv/
@@ -170,5 +171,3 @@ outputs/*
 !outputs/output_train_vocab_tinystories.pkl
 !outputs/output_train_merges_tinystories.pkl
 checkpoints/
-
-.shapecheese*
