@@ -74,7 +74,7 @@ def parse_args() -> argparse.Namespace:
     decode_parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=CHECKPOINTS_DIR / "ckp-iteration-90",
+        default=CHECKPOINTS_DIR / "ckp-iteration-4000",
         help="Checkpoint file to load.",
     )
     decode_parser.set_defaults(func=run_decode_command)
